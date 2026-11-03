@@ -73,8 +73,9 @@ def metrics(result: Result) -> list[dict]:
     """
     The quick summary: one row per scored class with its counts and precision, recall and F1. Recall is TP / (TP + FN)
     over the truth relations; precision is TP_calls / (TP_calls + FP) over eris's calls. For side and effect the calls
-    are eris's first flanks, so TP_calls can differ from TP (one collapsed repeat can find a relation from several
-    branches); for distance they are the same relations.
+    are eris's first flanks while recall accepts the true CDS at any flank, so TP_calls is usually lower than TP: a
+    wrong gene nearer the IS than the true CDS is an FP call, yet the true CDS still counts as found. For distance
+    they are the same relations.
     """
     rows = []
     truths = truth_rows(result)

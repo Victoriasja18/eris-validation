@@ -37,7 +37,7 @@ Why a truth relation was not found: **budget** (found with a larger hops budget)
 ## Relationships
 
 - A **truth relation** is found when an eris flank of the same **isoform group**, on the same **side**, places onto its CDS.
-- Precision counts **first flanks**; recall counts **truth relations**. One collapsed repeat can find a relation from several branches.
+- Precision counts **first flanks**; recall counts **truth relations**, found at any flank. A truth relation is still found when a wrong gene sits nearer the IS than its CDS, while that wrong gene is the first flank and counts against precision.
 
 ## Flagged ambiguities
 

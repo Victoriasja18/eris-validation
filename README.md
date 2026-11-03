@@ -72,9 +72,10 @@ uv run erisval score --report run_report.tsv --cds run_cds.fna --reference ref.f
 | `effect_confusion.tsv` | truth effect × eris effect |
 
 In `metrics.tsv`, recall = TP / (TP + FN) over the truth relations, and precision = TP_calls / (TP_calls + FP) over
-eris's calls. For side and effect the calls are eris's first flank per side per graph branch, so TP_calls can differ
-from TP (one collapsed repeat can find a relation from several branches); for distance they are the same. Effect is
-disrupted only; eris `TRUNCATED` counts as disrupted.
+eris's calls. For side and effect the calls are eris's first flank per side per graph branch, while recall accepts
+the true CDS at any flank, so TP_calls is usually lower than TP: when a wrong gene (often the IS's own transposase or
+a short ORF) sits nearer the IS than the true CDS, the true CDS still counts as found, but eris's call is an FP. For
+distance they are the same relations. Effect is disrupted only; eris `TRUNCATED` counts as disrupted.
 This workflow only reports; it never fails on low scores.
 
 ## Tests
