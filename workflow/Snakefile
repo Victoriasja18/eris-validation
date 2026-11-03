@@ -1,0 +1,31 @@
+"""
+Runs eris on every assembly in the sample sheet and scores its IS–CDS relations against the curated truth.
+
+    snakemake --cores 4                       # everything
+    snakemake --cores 4 results/metrics.tsv   # the same, by target
+"""
+import pandas as pd
+
+
+configfile: "config/config.yaml"
+
+
+SAMPLES = pd.read_csv(config["samples"], sep="\t", dtype=str).fillna("")
+SAMPLES = SAMPLES.set_index(["genome", "assembly_type"], drop=False)
+if SAMPLES.index.duplicated().any():
+    raise ValueError("samples.tsv: each (genome, assembly_type) must appear once")
+COMMIT = config["eris"]["commit"]
+ERIS_DIR = f"resources/eris/{COMMIT}"
+
+
+def sample(wildcards):
+    return SAMPLES.loc[(wildcards.genome, wildcards.assembly_type)]
+
+
+include: "rules/eris.smk"
+include: "rules/score.smk"
+
+
+rule all:
+    input:
+        "results/metrics.tsv",

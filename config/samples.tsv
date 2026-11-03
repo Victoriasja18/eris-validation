@@ -1,0 +1,4 @@
+genome	assembly_type	assembly	reference	truth	replicons
+EC958	complete	../data/EC958_complete_genome.fasta	../data/EC958_complete_genome.fasta	../data/ec958_IS_cds_relations.tsv	
+EC958	simulated	../data/contigs_shovill_simulated.gfa	../data/EC958_complete_genome.fasta	../data/ec958_IS_cds_relations.tsv	HG941718.1
+EC958	real	../data/contigs_shovill_realfastq.gfa	../data/EC958_complete_genome.fasta	../data/ec958_IS_cds_relations.tsv	

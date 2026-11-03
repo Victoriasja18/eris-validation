@@ -1,0 +1,10 @@
+# conda env create -f environment.yaml && conda activate eris-validation
+name: eris-validation
+channels: [conda-forge, bioconda]
+dependencies:
+  - python=3.12
+  - pip
+  - git
+  - snakemake-minimal>=8
+  - pip:
+      - -e .

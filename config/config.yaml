@@ -1,0 +1,23 @@
+# Sample sheet: one row per assembly to validate
+samples: config/samples.tsv
+
+# eris to install and validate. The commit is resolved to a full SHA and written into every metrics row.
+eris:
+  repo: https://github.com/adimascf/eris.git
+  commit: e4c6dbd704a9ce60fd79653154c10008d445c305
+
+# ISfinder minimap2 index given to eris (-d). Checked first: a genome index here makes GFA runs hang.
+is_db: ../data/IS_n.mmi
+
+# eris settings
+mode: collapse
+min_coverage: 0.30
+hops: 3          # the scored run
+reach_hops: 20   # a second run, only to tell 'budget' misses from 'gene' misses
+threads: 4
+
+# Scoring thresholds (same as eris's own relation benchmark)
+min_overlap: 0.5       # of the shorter of the eris gene and the truth CDS
+near: 150              # bp; distance bands are overlapping / near (0 to near) / far
+min_identity: 0.99     # nucleotide check
+min_cds_coverage: 0.8  # nucleotide check
