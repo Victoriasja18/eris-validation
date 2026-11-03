@@ -90,17 +90,20 @@ relation key (e.g. two copies of one IS with the same flank) are kept as one, th
 
 ## Outputs
 
-Per assembly in `results/<genome>/<assembly_type>/`:
+Per assembly in `<outdir>/<genome>/<assembly_type>/` (`outdir` in `config/config.yaml`):
 
 | file | content |
 |---|---|
 | `side_confusion.tsv` | truth side (upstream, downstream, no_truth) × eris side (upstream, downstream, not_reported) |
 | `distance_confusion.tsv` | truth band × eris band |
 | `effect_confusion.tsv` | truth effect (disrupted, none, unscored) × eris effect |
-| `metrics.tsv` | long format: `dimension, class, metric, value` |
+| `metrics.tsv` | quick summary, one row per class: `dimension, class, TP, FN, TP_calls, FP, precision, recall, f1` |
+| `details.tsv` | further statistics, long format: `dimension, class, metric, value` |
 | `relations.tsv` | one row per truth relation and per false flank: status, IS, side, locus tag, eris gene, both distances, both effects, `distance_band_ok`, `effect_ok`, miss cause, nucleotide check |
 
-`results/metrics.tsv` combines them with `genome, assembly_type, eris_commit` columns.
+`<outdir>/metrics.tsv` and `<outdir>/details.tsv` combine every assembly, with `genome, assembly_type` columns.
+Recall is TP / (TP + FN) over truth relations; precision is TP_calls / (TP_calls + FP) over eris's first flanks (side,
+effect) or the found relations (distance).
 
 ## Layout
 

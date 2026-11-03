@@ -17,7 +17,7 @@ from eris_validation.eris_output import ErisOutputError, read_cds, read_flanks
 from eris_validation.isoforms import read_groups
 from eris_validation.place import GenePlacer
 from eris_validation.score import Thresholds, score
-from eris_validation.tables import metrics, write_tables
+from eris_validation.tables import details, metrics, write_tables
 from eris_validation.truth import TruthError, read_truth
 
 MIN_IS_DB_SEQUENCES = 100  # an ISfinder index holds thousands; a genome index a handful
@@ -37,7 +37,7 @@ def main(argv=None):
     s.add_argument('--groups', type=Path, required=True, help="isoform groups TSV (eris tests/isoform_groups.tsv)")
     s.add_argument('--replicons', help='comma-separated; limit the truth to these replicons')
     s.add_argument('--label', action='append', default=[], metavar='KEY=VALUE',
-                   help='column added to metrics.tsv, e.g. genome=EC958 (repeatable)')
+                   help='column added to metrics.tsv and details.tsv, e.g. genome=EC958 (repeatable)')
     s.add_argument('-o', '--outdir', type=Path, required=True)
     for name, default in vars(Thresholds()).items():
         s.add_argument(f"--{name.replace('_', '-')}", type=type(default), default=default)
@@ -50,8 +50,8 @@ def main(argv=None):
     d = commands.add_parser('check-is-db', help='check that an eris target index holds an IS database')
     d.add_argument('--db', type=Path, required=True)
 
-    m = commands.add_parser('combine', help='concatenate metrics.tsv files')
-    m.add_argument('metrics', type=Path, nargs='+')
+    m = commands.add_parser('combine', help='concatenate metrics.tsv (or details.tsv) files')
+    m.add_argument('tables', type=Path, nargs='+')
     m.add_argument('-o', '--out', type=Path, required=True)
 
     args = parser.parse_args(argv)
@@ -84,23 +84,17 @@ def run_score(args):
 
     th = Thresholds(**{name: getattr(args, name) for name in vars(Thresholds())})
     result = score(truths, flanks, place, reach_flanks, th)
-    write_tables(result, args.outdir)
-    if labels:
-        table = pd.read_csv(args.outdir / 'metrics.tsv', sep='\t')
-        for i, (key, value) in enumerate(labels.items()):
-            table.insert(i, key, value)
-        table.to_csv(args.outdir / 'metrics.tsv', sep='\t', index=False)
-    print(summary(metrics(result)), file=sys.stderr)
+    write_tables(result, args.outdir, labels)
+    print(summary(metrics(result), details(result)), file=sys.stderr)
 
 
-def summary(rows: list[dict]) -> str:
-    value = {(r['dimension'], r['class'], r['metric']): r['value'] for r in rows}
+def summary(rows: list[dict], extra: list[dict]) -> str:
+    value = {(r['dimension'], r['class'], r['metric']): r['value'] for r in extra}
     fmt = lambda v: '-' if v is None else f"{v:.2f}"
     lines = [f"{'':<12}{'P':>6}{'R':>6}{'F1':>6}"]
-    for dimension, class_ in (('side', 'upstream'), ('side', 'downstream'), ('side', 'both'),
-                              ('effect', 'disrupted')):
-        lines.append(f"{class_:<12}" + "".join(f"{fmt(value[dimension, class_, m]):>6}"
-                                               for m in ('precision', 'recall', 'f1')))
+    for r in rows:
+        if r['dimension'] != 'distance':
+            lines.append(f"{r['class']:<12}" + "".join(f"{fmt(r[m]):>6}" for m in ('precision', 'recall', 'f1')))
     lines.append(f"distance band agreement {fmt(value['distance', 'all', 'agreement'])}, "
                  f"pooled recall {fmt(value['side', 'both', 'pooled_recall'])}")
     return "\n".join(lines)
@@ -126,7 +120,7 @@ def run_check_is_db(args):
 
 
 def run_combine(args):
-    tables = [pd.read_csv(path, sep='\t') for path in args.metrics]
+    tables = [pd.read_csv(path, sep='\t') for path in args.tables]
     args.out.parent.mkdir(parents=True, exist_ok=True)
     pd.concat(tables, ignore_index=True).to_csv(args.out, sep='\t', index=False)
 

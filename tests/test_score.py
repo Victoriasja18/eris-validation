@@ -12,7 +12,7 @@ import pytest
 from eris_validation.eris_output import Flank
 from eris_validation.place import Placement
 from eris_validation.score import band, first_flanks, score
-from eris_validation.tables import confusion, metrics
+from eris_validation.tables import confusion, details, metrics
 from eris_validation.truth import TruthRelation
 
 
@@ -92,26 +92,42 @@ def test_miss_cause_comes_from_the_reach_run(result):
     assert (tags["T4"]["miss_cause"], tags["T3"]["miss_cause"]) == ("budget", "gene")
 
 
-def value(table, dimension, class_, metric):
-    [v] = [r["value"] for r in table if (r["dimension"], r["class"], r["metric"]) == (dimension, class_, metric)]
+def row(rows, dimension, class_):
+    [r] = [r for r in rows if (r["dimension"], r["class"]) == (dimension, class_)]
+    return r
+
+
+def value(rows, dimension, class_, metric):
+    [v] = [r["value"] for r in rows if (r["dimension"], r["class"], r["metric"]) == (dimension, class_, metric)]
     return v
+
+
+def counts(r):
+    return r["TP"], r["FN"], r["TP_calls"], r["FP"]
 
 
 def test_side_metrics(result):
     m = metrics(result)
-    assert value(m, "side", "upstream", "recall") == 0.5 and value(m, "side", "upstream", "precision") == 0.5
-    assert value(m, "side", "downstream", "precision") == pytest.approx(1 / 3)
-    assert value(m, "side", "downstream", "f1") == pytest.approx(0.4)
-    assert value(m, "side", "both", "precision") == pytest.approx(0.4)
-    assert value(m, "side", "both", "f1") == pytest.approx(4 / 9)
-    assert value(m, "side", "both", "pooled_recall") == 0.75
+    assert counts(row(m, "side", "upstream")) == (1, 1, 1, 1)  # T1 found, T3 missed; g1 right, g5 unplaceable
+    assert counts(row(m, "side", "downstream")) == (1, 1, 1, 2)  # T2 found, T4 missed; g2 right, g3 and g7 false
+    both = row(m, "side", "both")
+    assert counts(both) == (2, 2, 2, 3)
+    assert both["precision"] == pytest.approx(0.4) and both["recall"] == 0.5 and both["f1"] == pytest.approx(4 / 9)
+    assert row(m, "side", "downstream")["f1"] == pytest.approx(0.4)
 
 
 def test_distance_and_effect_metrics(result):
     m = metrics(result)
-    assert value(m, "distance", "all", "agreement") == 1.0 and value(m, "distance", "all", "median_abs_error") == 1
-    assert value(m, "distance", "near", "f1") == 1.0 and value(m, "distance", "far", "recall") is None
-    assert value(m, "effect", "disrupted", "precision") == 0.5 and value(m, "effect", "disrupted", "recall") == 0.5
+    assert counts(row(m, "distance", "near")) == (1, 0, 1, 0) and row(m, "distance", "near")["f1"] == 1.0
+    assert row(m, "distance", "far")["recall"] is None
+    assert counts(row(m, "effect", "disrupted")) == (1, 1, 1, 1)  # T2 found, T4 missed; g2 right, g7 false
+    assert row(m, "effect", "disrupted")["precision"] == 0.5
+
+
+def test_details(result):
+    d = details(result)
+    assert value(d, "side", "both", "pooled_recall") == 0.75 and value(d, "side", "both", "wrong_side") == 1
+    assert value(d, "distance", "all", "agreement") == 1.0 and value(d, "distance", "all", "median_abs_error") == 1
 
 
 def test_side_confusion(result):

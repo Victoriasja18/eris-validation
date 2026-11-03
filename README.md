@@ -32,8 +32,9 @@ uv run snakemake --cores 4
 ```
 
 Per assembly, eris runs twice: the scored run (`hops: 3`) and a reach run (`reach_hops: 20`) used only to tell budget
-misses from gene misses. Results land in `results/<genome>/<assembly_type>/`, all of them combined in
-`results/metrics.tsv`.
+misses from gene misses. Results land in `<outdir>/<genome>/<assembly_type>/`, with every assembly combined in
+`<outdir>/metrics.tsv` and `<outdir>/details.tsv`. Set `outdir` in `config/config.yaml`, or per run with
+`--config outdir=results`.
 
 To score an eris run you already have, without Snakemake:
 
@@ -63,14 +64,17 @@ uv run erisval score --report run_report.tsv --cds run_cds.fna --reference ref.f
 
 | file | content |
 |---|---|
-| `metrics.tsv` | `genome, assembly_type, eris_commit, hops, dimension, class, metric, value` |
+| `metrics.tsv` | the quick summary: `genome, assembly_type, dimension, class, TP, FN, TP_calls, FP, precision, recall, f1`, one row per class (side: upstream/downstream/both; distance: overlapping/near/far; effect: disrupted) |
+| `details.tsv` | further statistics, `dimension, class, metric, value`: pooled recall, wrong-side and miss counts, unplaceable genes, distance band agreement and errors |
 | `relations.tsv` | one row per truth relation (`TP`, `FN`, `FN_wrong_side`) and per false first flank (`FP`, `FP_wrong_side`, `FP_unplaceable`), with both distances and effects, `distance_band_ok`, `effect_ok`, `distance_error`, `nucleotide_ok` and `miss_cause` |
 | `side_confusion.tsv` | truth side × eris side |
 | `distance_confusion.tsv` | truth distance band × eris band, for relations found on their side |
 | `effect_confusion.tsv` | truth effect × eris effect |
 
-Metrics: side P/R/F1 per side and both (precision over eris's first flank per side per graph branch), pooled recall;
-distance P/R/F1 per band, band agreement and absolute error; disrupted P/R/F1 (eris `TRUNCATED` counts as disrupted).
+In `metrics.tsv`, recall = TP / (TP + FN) over the truth relations, and precision = TP_calls / (TP_calls + FP) over
+eris's calls. For side and effect the calls are eris's first flank per side per graph branch, so TP_calls can differ
+from TP (one collapsed repeat can find a relation from several branches); for distance they are the same. Effect is
+disrupted only; eris `TRUNCATED` counts as disrupted.
 This workflow only reports; it never fails on low scores.
 
 ## Tests

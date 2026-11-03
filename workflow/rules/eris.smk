@@ -42,16 +42,16 @@ rule run_eris:
         is_db_ok=rules.check_is_db.output,
         assembly=lambda wc: sample(wc).assembly,
     output:
-        report="results/{genome}/{assembly_type}/eris/h{hops}_report.tsv",
-        cds="results/{genome}/{assembly_type}/eris/h{hops}_cds.fna",
+        report=OUT + "/{genome}/{assembly_type}/eris/h{hops}_report.tsv",
+        cds=OUT + "/{genome}/{assembly_type}/eris/h{hops}_cds.fna",
     params:
-        prefix="results/{genome}/{assembly_type}/eris/h{hops}",
+        prefix=OUT + "/{genome}/{assembly_type}/eris/h{hops}",
         is_db=config["is_db"],
         mode=config["mode"],
         min_coverage=config["min_coverage"],
     threads: config["threads"]
     log:
-        "results/{genome}/{assembly_type}/eris/h{hops}.log",
+        OUT + "/{genome}/{assembly_type}/eris/h{hops}.log",
     shell:
         "{input.eris} -i {input.assembly} -d {params.is_db} -o {params.prefix} --mode {params.mode}"
         " --hops {wildcards.hops} -c {params.min_coverage} -t {threads} > {log} 2>&1"

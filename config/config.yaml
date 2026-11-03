@@ -1,6 +1,9 @@
 # Sample sheet: one row per assembly to validate
 samples: config/samples.tsv
 
+# Where results go (eris runs and validation tables), relative to this repo
+outdir: ../progress/result/eris_validation
+
 # eris to install and validate. The commit is resolved to a full SHA and written into every metrics row.
 eris:
   repo: https://github.com/adimascf/eris.git

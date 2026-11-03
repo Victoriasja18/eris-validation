@@ -29,9 +29,12 @@ def test_score_writes_every_table_with_labels(tmp_path):
           "--groups", str(tmp_path / "groups.tsv"), "-o", str(out), "--label", "genome=toy"])
 
     m = pd.read_csv(out / "metrics.tsv", sep="\t")
-    assert list(m.columns) == ["genome", "dimension", "class", "metric", "value"]
-    both = m.set_index(["dimension", "class", "metric"])["value"]
-    assert both["side", "both", "recall"] == 0.5 and both["side", "both", "precision"] == 1.0
+    assert list(m.columns) == ["genome", "dimension", "class", "TP", "FN", "TP_calls", "FP", "precision", "recall",
+                               "f1"]
+    both = m.set_index(["dimension", "class"]).loc[("side", "both")]
+    assert (both["TP"], both["FN"], both["recall"], both["precision"]) == (1, 1, 0.5, 1.0)
+    assert list(pd.read_csv(out / "details.tsv", sep="\t").columns) == ["genome", "dimension", "class", "metric",
+                                                                         "value"]
     statuses = pd.read_csv(out / "relations.tsv", sep="\t").set_index("locus_tag")["status"].to_dict()
     assert statuses == {"T1": "TP", "T2": "FN"}
     assert all((out / f"{d}_confusion.tsv").exists() for d in ("side", "distance", "effect"))
