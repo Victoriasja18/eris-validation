@@ -78,8 +78,23 @@ relation key (e.g. two copies of one IS with the same flank) are kept as one, th
 - **Recall:** truth relations found on their side. Pooled recall also accepts the wrong side.
 - **Precision:** over first flanks only (nearest flank per side per graph branch), because the truth holds only the
   nearest CDS.
-- **Wrong side** is strict: FN on the true side and FP on the reported side, marked `FN_wrong_side` / `FP_wrong_side`.
-- **Unplaceable genes** (no placement on the reference) count as FP, marked `FP_unplaceable`.
+- **Status and reason:** every truth relation is TP or FN, every false first flank is FP. FN and FP carry one
+  `reason`, checked in this order, so each points at one kind of bug:
+
+  | status | reason | meaning |
+  |---|---|---|
+  | FN | `wrong_side` | its own IS reports the CDS only on the other side |
+  | FN | `wrong_IS` | only a differently named IS reports the CDS, on the same side |
+  | FN | `not_found` | not reported (`miss_cause` says budget or gene) |
+  | FP | `unplaceable` | the gene has no placement on the reference |
+  | FP | `wrong_side` | a truth CDS of its IS, but on the other side |
+  | FP | `wrong_IS` | a truth CDS on the same side, but of a differently named IS |
+  | FP | `not_in_truth` | in no truth relation |
+
+- **Wrong side** is strict: FN on the true side and FP on the reported side.
+- **Wrong IS** only says the gene belongs to another IS's relation; whether eris misnamed the IS or found a real
+  neighbouring IS is judged per case, with `distance_error` as a hint (a small error means the same IS position).
+- **Unplaceable genes** count as FP.
 - **Distance:** on relations found on their side, truth and eris distances binned into overlapping (< 0, or eris overlap
   context), near (0–150 bp), far (> 150 bp). P/R/F1 per band, band agreement, and absolute error (median, max, share
   within 10 and 50 bp). eris reports overlaps as 0.
@@ -99,7 +114,7 @@ Per assembly in `<outdir>/<genome>/<assembly_type>/` (`outdir` in `config/config
 | `effect_confusion.tsv` | truth effect (disrupted, none, unscored) × eris effect |
 | `metrics.tsv` | quick summary, one row per class: `dimension, class, TP, FN, TP_calls, FP, precision, recall, f1` |
 | `details.tsv` | further statistics, long format: `dimension, class, metric, value` |
-| `relations.tsv` | one row per truth relation and per false flank: status, IS, side, locus tag, eris gene, both distances, both effects, `distance_band_ok`, `effect_ok`, miss cause, nucleotide check |
+| `relations.tsv` | one row per truth relation and per false flank: status, reason, IS, side, locus tag, eris gene, both distances, both effects, `distance_band_ok`, `effect_ok`, miss cause, nucleotide check |
 
 `<outdir>/metrics.tsv` and `<outdir>/details.tsv` combine every assembly, with `genome, assembly_type` columns.
 Recall is TP / (TP + FN) over truth relations; precision is TP_calls / (TP_calls + FP) over eris's first flanks (side,

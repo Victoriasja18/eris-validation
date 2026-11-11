@@ -1,9 +1,12 @@
 """
-Matches eris's flanks to the truth and gives every truth relation and every false first flank a status:
+Matches eris's flanks to the truth and gives every truth relation and every false first flank a status (TP, FN or FP)
+and, for FN and FP, one reason, checked in this order:
 
-- truth relations: TP (found on its side), FN_wrong_side (found only on the other side), FN (not found);
-- eris first flanks that match no truth relation on their side: FP_wrong_side (they match one on the other side),
-  FP_unplaceable (the gene has no place on the reference), FP.
+- truth relations: TP (found on its side by its own IS); FN `wrong_side` (its own IS reports it only on the other
+  side), FN `wrong_IS` (only a differently named IS reports it, on the same side), FN `not_found`;
+- eris first flanks that match no truth relation of their IS on their side: FP `unplaceable` (the gene has no place on
+  the reference), FP `wrong_side` (a truth CDS of their IS on the other side), FP `wrong_IS` (a truth CDS on the same
+  side, but of a differently named IS), FP `not_in_truth`.
 
 An eris gene matches a truth CDS when one of its placements on the reference lies on the same replicon and strand
 and overlaps it by at least `min_overlap` of the shorter of the two. Only flanks of loci in the same isoform group
@@ -31,8 +34,9 @@ class Thresholds:
 @dataclass
 class FirstFlank:
     flank: Flank
-    status: str  # 'TP' or one of the FP statuses
-    matched: list[TruthRelation]  # truth relations on its side that it matches
+    status: str  # 'TP' or 'FP'
+    matched: list[TruthRelation]  # truth relations of its IS on its side that it matches
+    reason: str = ''  # for an FP: 'unplaceable', 'wrong_side', 'wrong_IS' or 'not_in_truth'
 
 
 @dataclass
@@ -92,8 +96,14 @@ def score(truths: list[TruthRelation], flanks: list[Flank], place: Place, reach_
     Scores eris's flanks against the truth. `reach_flanks` come from the same assembly run with a larger hops
     budget: a miss they find is put down to the budget rather than to a wrong or absent gene.
     """
+    def on_cds(t: TruthRelation, candidates: list[Flank]) -> list[Flank]:
+        return [f for f in candidates if any(matches(p, t, th) for p in place(f.gene_id))]
+
     def matching(t: TruthRelation, candidates: list[Flank]) -> list[Flank]:
-        return [f for f in candidates if f.group == t.group and any(matches(p, t, th) for p in place(f.gene_id))]
+        return [f for f in on_cds(t, candidates) if f.group == t.group]
+
+    def nearest(candidates: list[Flank]) -> Flank | None:
+        return min(candidates, key=lambda f: (f.hops, f.distance_bp), default=None)
 
     result = Result(truth_total={side: sum(t.side == side for t in truths) for side in SIDES})
     for t in truths:
@@ -105,21 +115,36 @@ def score(truths: list[TruthRelation], flanks: list[Flank], place: Place, reach_
         cause = ''
         if reach_flanks is not None:
             cause = 'budget' if any(f.side == t.side for f in matching(t, reach_flanks)) else 'gene'
-        other = sorted(found, key=lambda f: (f.hops, f.distance_bp))
-        row = _row('FN_wrong_side' if other else 'FN', truth=t, flank=other[0] if other else None, th=th)
+        other_is = [f for f in on_cds(t, flanks) if f.group != t.group and f.side == t.side]
+        if found:
+            reason, f = 'wrong_side', nearest(found)
+        elif other_is:
+            reason, f = 'wrong_IS', nearest(other_is)
+        else:
+            reason, f = 'not_found', None
+        row = _row('FN', reason, truth=t, flank=f, th=th)
         row['miss_cause'] = cause
         result.rows.append(row)
 
     for f in first_flanks(flanks):
         placements = place(f.gene_id)
-        hits = [t for t in truths if t.group == f.group and any(matches(p, t, th) for p in placements)]
+        on_gene = [t for t in truths if any(matches(p, t, th) for p in placements)]
+        hits = [t for t in on_gene if t.group == f.group]
         matched = [t for t in hits if t.side == f.side]
         if matched:
             result.first.append(FirstFlank(f, 'TP', matched))
             continue
-        status = 'FP_unplaceable' if not placements else 'FP_wrong_side' if hits else 'FP'
-        result.first.append(FirstFlank(f, status, []))
-        row = _row(status, truth=hits[0] if hits else None, flank=f, th=th)
+        other_is = [t for t in on_gene if t.group != f.group and t.side == f.side]
+        if not placements:
+            reason, truth = 'unplaceable', None
+        elif hits:
+            reason, truth = 'wrong_side', hits[0]
+        elif other_is:
+            reason, truth = 'wrong_IS', other_is[0]
+        else:
+            reason, truth = 'not_in_truth', None
+        result.first.append(FirstFlank(f, 'FP', [], reason))
+        row = _row('FP', reason, truth=truth, flank=f, th=th)
         row['side'] = f.side
         if placements:
             p = placements[0]
@@ -129,7 +154,7 @@ def score(truths: list[TruthRelation], flanks: list[Flank], place: Place, reach_
 
 
 def _found_row(t: TruthRelation, f: Flank, place: Place, th: Thresholds) -> dict:
-    row = _row('TP', truth=t, flank=f, th=th)
+    row = _row('TP', '', truth=t, flank=f, th=th)
     placements = [p for p in place(f.gene_id) if matches(p, t, th)]
     p = placements[0]
     row.update(
@@ -141,10 +166,11 @@ def _found_row(t: TruthRelation, f: Flank, place: Place, th: Thresholds) -> dict
     return row
 
 
-def _row(status: str, truth: TruthRelation | None, flank: Flank | None, th: Thresholds) -> dict:
+def _row(status: str, reason: str, truth: TruthRelation | None, flank: Flank | None, th: Thresholds) -> dict:
     t, f = truth, flank
     row = {
         'status': status,
+        'reason': reason,
         'group': t.group if t else f.group,
         'side': t.side if t else f.side,
         'is_id': t.is_id if t else '',
@@ -165,7 +191,7 @@ def _row(status: str, truth: TruthRelation | None, flank: Flank | None, th: Thre
         'eris_placement': '',
         'distance_band_ok': None,
         'effect_ok': None,
-        'distance_error': None,
+        'distance_error': abs(f.distance_bp - max(0, t.distance_bp)) if t and f else None,
         'nucleotide_ok': None,
         'miss_cause': '',
     }

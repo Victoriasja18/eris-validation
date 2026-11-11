@@ -70,13 +70,44 @@ def test_a_branch_beyond_the_locus_contig_gives_one_first_flank_per_contig():
     assert [f.gene_id for f in first_flanks(flanks)] == ["b", "a"]
 
 
-def test_every_truth_relation_and_false_flank_gets_a_status(result):
+def status(row):
+    return row["status"], row["reason"]
+
+
+def test_every_truth_relation_and_false_flank_gets_a_status_and_reason(result):
     rows = by(result.rows, "eris_gene")
-    assert {r["status"] for r in result.rows if r["locus_tag"] == "T4"} == {"FN"}
-    assert [(g, rows[g]["status"]) for g in ("g1", "g2", "g3", "g5", "g7")] == [
-        ("g1", "TP"), ("g2", "TP"), ("g3", "FP_wrong_side"), ("g5", "FP_unplaceable"), ("g7", "FP")]
-    tags = by([r for r in result.rows if r["status"].startswith("FN") or r["status"] == "TP"], "locus_tag")
-    assert tags["T3"]["status"] == "FN_wrong_side" and tags["T3"]["eris_side"] == "downstream"
+    assert [status(r) for r in result.rows if r["locus_tag"] == "T4"] == [("FN", "not_found")]
+    assert [(g, status(rows[g])) for g in ("g1", "g2", "g3", "g5", "g7")] == [
+        ("g1", ("TP", "")), ("g2", ("TP", "")), ("g3", ("FP", "wrong_side")), ("g5", ("FP", "unplaceable")),
+        ("g7", ("FP", "not_in_truth"))]
+    tags = by([r for r in result.rows if r["status"] in ("TP", "FN")], "locus_tag")
+    assert status(tags["T3"]) == ("FN", "wrong_side") and tags["T3"]["eris_side"] == "downstream"
+
+
+# Wrong IS: ISSen10 has T5 downstream; eris names that IS IS3411 and reports T5's gene (g9) as its nearest downstream
+# flank. A third IS (ISEc8) reports T5's gene on the other side (g10), which is not a wrong-IS case.
+T5 = truth("ISSen10_1", "ISSen10", "downstream", "T5", 20000, 20900, "+", 30, "none")
+WRONG_IS_PLACES = {"g9": [Placement("chr", 20000, 20900, "+", 1.0)], "g10": [Placement("chr", 20000, 20900, "+", 1.0)]}
+
+
+def test_a_truth_cds_reported_under_another_is_is_wrong_is_on_both_sides():
+    flanks = [flank("L4", "IS3411", "downstream", "g9", 28), flank("L5", "ISEc8", "upstream", "g10", 28)]
+    result = score([T5], flanks, WRONG_IS_PLACES.__getitem__)
+    [truth_row] = [r for r in result.rows if r["locus_tag"] == "T5" and r["status"] == "FN"]
+    assert status(truth_row) == ("FN", "wrong_IS") and truth_row["eris_target"] == "IS3411_x"
+    flank_rows = by([r for r in result.rows if r["status"] == "FP"], "eris_gene")
+    assert status(flank_rows["g9"]) == ("FP", "wrong_IS") and flank_rows["g9"]["is_id"] == "ISSen10_1"
+    assert truth_row["distance_error"] == flank_rows["g9"]["distance_error"] == 2  # to judge: same IS position?
+    assert status(flank_rows["g10"]) == ("FP", "not_in_truth")
+    assert [f.reason for f in result.first] == ["wrong_IS", "not_in_truth"]
+
+
+def test_wrong_side_is_checked_before_wrong_is():
+    t5_up = truth("IS3411_1", "IS3411", "upstream", "T5", 20000, 20900, "+", 30, "none")
+    flanks = [flank("L4", "IS3411", "downstream", "g9", 28)]
+    result = score([T5, t5_up], flanks, WRONG_IS_PLACES.__getitem__)
+    reasons = {(r["status"], r["is_id"]): r["reason"] for r in result.rows}
+    assert reasons == {("FN", "ISSen10_1"): "wrong_IS", ("FN", "IS3411_1"): "wrong_side", ("FP", "IS3411_1"): "wrong_side"}
 
 
 def test_matched_rows_flag_distance_effect_and_sequence(result):
@@ -88,7 +119,7 @@ def test_matched_rows_flag_distance_effect_and_sequence(result):
 
 
 def test_miss_cause_comes_from_the_reach_run(result):
-    tags = by([r for r in result.rows if r["status"].startswith("FN")], "locus_tag")
+    tags = by([r for r in result.rows if r["status"] == "FN"], "locus_tag")
     assert (tags["T4"]["miss_cause"], tags["T3"]["miss_cause"]) == ("budget", "gene")
 
 
@@ -127,6 +158,7 @@ def test_distance_and_effect_metrics(result):
 def test_details(result):
     d = details(result)
     assert value(d, "side", "both", "pooled_recall") == 0.75 and value(d, "side", "both", "wrong_side") == 1
+    assert value(d, "side", "both", "wrong_IS") == 0 and value(d, "side", "both", "unplaceable") == 1
     assert value(d, "distance", "all", "agreement") == 1.0 and value(d, "distance", "all", "median_abs_error") == 1
 
 

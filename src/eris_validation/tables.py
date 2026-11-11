@@ -12,8 +12,7 @@ from eris_validation.eris_output import disrupting
 from eris_validation.score import Result
 from eris_validation.truth import SIDES
 
-TRUTH_STATUSES = ('TP', 'FN', 'FN_wrong_side')
-FALSE_FLANKS = ('FP', 'FP_unplaceable')  # flanks with no truth relation on either side
+TRUTH_STATUSES = ('TP', 'FN')
 BANDS = ('overlapping', 'near', 'far')
 
 
@@ -34,9 +33,10 @@ def truth_rows(result: Result) -> list[dict]:
 def confusion(result: Result, dimension: str) -> pd.DataFrame:
     """Truth class (rows) × eris class (columns) for 'side', 'distance' or 'effect'."""
     truths = truth_rows(result)
-    false = [r for r in result.rows if r['status'] in FALSE_FLANKS]
+    # False flanks with no truth relation of their IS on either side; a wrong-side flank is already in its truth's row
+    false = [r for r in result.rows if r['status'] == 'FP' and r['reason'] != 'wrong_side']
     if dimension == 'side':
-        pairs = [(r['side'], r['eris_side'] or 'not_reported') for r in truths]
+        pairs = [(r['side'], r['eris_side'] if r['reason'] in ('', 'wrong_side') else 'not_reported') for r in truths]
         pairs += [('no_truth', r['eris_side']) for r in false]
         index, columns = [*SIDES, 'no_truth'], [*SIDES, 'not_reported']
     elif dimension == 'distance':
@@ -109,11 +109,12 @@ def details(result: Result) -> list[dict]:
         rows.append({'dimension': dimension, 'class': class_, 'metric': metric, 'value': value})
 
     truths = truth_rows(result)
-    add('side', 'both', 'pooled_recall', ratio(sum(r['status'] != 'FN' for r in truths), len(truths)))
-    add('side', 'both', 'wrong_side', sum(r['status'] == 'FN_wrong_side' for r in truths))
+    add('side', 'both', 'pooled_recall', ratio(sum(r['reason'] in ('', 'wrong_side') for r in truths), len(truths)))
+    for reason in ('wrong_side', 'wrong_IS'):
+        add('side', 'both', reason, sum(r['reason'] == reason for r in truths))
     for cause in ('gene', 'budget'):
         add('side', 'both', f'miss_{cause}', sum(r['miss_cause'] == cause for r in truths))
-    add('side', 'both', 'unplaceable', sum(f.status == 'FP_unplaceable' for f in result.first))
+    add('side', 'both', 'unplaceable', sum(f.reason == 'unplaceable' for f in result.first))
 
     table = confusion(result, 'distance')
     errors = [r['distance_error'] for r in truths if r['status'] == 'TP']

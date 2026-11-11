@@ -22,8 +22,17 @@ Upstream or downstream, read in the direction of the IS's own strand.
 **First flank**:
 eris's nearest reported flank on one side of one graph branch; the only flanks precision is computed over.
 
+**Reason**:
+Why an FN or FP is wrong, one per row, checked in order: FN `wrong_side`, `wrong_IS`, `not_found`; FP `unplaceable`,
+`wrong_side`, `wrong_IS`, `not_in_truth`. Status stays TP / FN / FP.
+_Avoid_: FN_wrong_side, FP_wrong_side, FP_unplaceable (old status names)
+
 **Wrong side**:
-A truth CDS that eris reports on the opposite side; an FN on its true side and an FP on the reported one.
+A truth CDS that its own IS reports on the opposite side; an FN on its true side and an FP on the reported one.
+
+**Wrong IS**:
+A truth CDS that eris reports on the right side but under a differently named IS (another isoform group). Whether eris
+misnamed the IS or found a real neighbouring IS is judged per case.
 
 **Unplaceable gene**:
 An eris gene that cannot be aligned to the reference, so it can match no truth relation.

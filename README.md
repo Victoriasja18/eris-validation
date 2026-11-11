@@ -65,8 +65,8 @@ uv run erisval score --report run_report.tsv --cds run_cds.fna --reference ref.f
 | file | content |
 |---|---|
 | `metrics.tsv` | the quick summary: `genome, assembly_type, dimension, class, TP, FN, TP_calls, FP, precision, recall, f1`, one row per class (side: upstream/downstream/both; distance: overlapping/near/far; effect: disrupted) |
-| `details.tsv` | further statistics, `dimension, class, metric, value`: pooled recall, wrong-side and miss counts, unplaceable genes, distance band agreement and errors |
-| `relations.tsv` | one row per truth relation (`TP`, `FN`, `FN_wrong_side`) and per false first flank (`FP`, `FP_wrong_side`, `FP_unplaceable`), with both distances and effects, `distance_band_ok`, `effect_ok`, `distance_error`, `nucleotide_ok` and `miss_cause` |
+| `details.tsv` | further statistics, `dimension, class, metric, value`: pooled recall, wrong-side, wrong-IS and miss counts, unplaceable genes, distance band agreement and errors |
+| `relations.tsv` | one row per truth relation (`TP`, `FN`) and per false first flank (`FP`), with a `reason` for FN and FP (FN: `wrong_side`, `wrong_IS`, `not_found`; FP: `unplaceable`, `wrong_side`, `wrong_IS`, `not_in_truth`), both distances and effects, `distance_band_ok`, `effect_ok`, `distance_error`, `nucleotide_ok` and `miss_cause` |
 | `side_confusion.tsv` | truth side × eris side |
 | `distance_confusion.tsv` | truth distance band × eris band, for relations found on their side |
 | `effect_confusion.tsv` | truth effect × eris effect |
