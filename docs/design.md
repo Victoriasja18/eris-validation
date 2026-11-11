@@ -5,9 +5,10 @@ always supplied from outside; this repo only validates.
 
 ## Goal
 
-Measure how well eris reports, for each IS, which CDS lies upstream and downstream, how far away it is, and whether the
-insertion disrupts it. Report precision, recall and F1 for side, distance and effect, and a row-level table of every
-wrong prediction. Run it on any genome with Snakemake.
+Measure how well eris reports, for each IS, which CDS lies upstream and downstream and how far away it is. Report
+precision, recall and F1 for side and distance, and a row-level table of every wrong prediction. Run it on any genome
+with Snakemake. (Effect, i.e. disrupted, was scored until 2026-11-11 and is now left out as not a priority; the truth
+may still carry it.)
 
 Terms are defined in [CONTEXT.md](../CONTEXT.md). Why the scorer lives here and not in eris:
 [ADR 0001](adr/0001-independent-scorer.md).
@@ -98,9 +99,11 @@ relation key (e.g. two copies of one IS with the same flank) are kept as one, th
 - **Distance:** on relations found on their side, truth and eris distances binned into overlapping (< 0, or eris overlap
   context), near (0–150 bp), far (> 150 bp). P/R/F1 per band, band agreement, and absolute error (median, max, share
   within 10 and 50 bp). eris reports overlaps as 0.
-- **Effect:** only disrupted is scored. eris `DISRUPTED` or `TRUNCATED` counts as disrupted. Upregulated is shown in the
-  matrix, not scored.
-- **Miss cause:** a miss found by the hops-20 run is `budget`, otherwise `gene`.
+- **Effect:** not scored (since 2026-11-11). Truth and eris effects are carried into `relations.tsv` only.
+- (Formerly: only disrupted was scored. eris `DISRUPTED` or `TRUNCATED` counted as disrupted. Upregulated was shown in the
+  matrix, not scored.)
+- **Miss cause:** a miss found by the hops-20 run is `budget`; otherwise `not_reported` when a gene pyfgs called
+  (any record in `_cds.fna`) places on the truth CDS, else `not_called`.
 - **Reports only:** no pass/fail. eris's own EC958 ratchet stays the only gate.
 
 ## Outputs
@@ -111,14 +114,13 @@ Per assembly in `<outdir>/<genome>/<assembly_type>/` (`outdir` in `config/config
 |---|---|
 | `side_confusion.tsv` | truth side (upstream, downstream, no_truth) × eris side (upstream, downstream, not_reported) |
 | `distance_confusion.tsv` | truth band × eris band |
-| `effect_confusion.tsv` | truth effect (disrupted, none, unscored) × eris effect |
 | `metrics.tsv` | quick summary, one row per class: `dimension, class, TP, FN, TP_calls, FP, precision, recall, f1` |
 | `details.tsv` | further statistics, long format: `dimension, class, metric, value` |
-| `relations.tsv` | one row per truth relation and per false flank: status, reason, IS, side, locus tag, eris gene, both distances, both effects, `distance_band_ok`, `effect_ok`, miss cause, nucleotide check |
+| `relations.tsv` | one row per truth relation and per false flank: status, reason, IS, side, locus tag, eris gene, both distances, both effects (unscored), `distance_band_ok`, miss cause, nucleotide check |
 
 `<outdir>/metrics.tsv` and `<outdir>/details.tsv` combine every assembly, with `genome, assembly_type` columns.
-Recall is TP / (TP + FN) over truth relations; precision is TP_calls / (TP_calls + FP) over eris's first flanks (side,
-effect) or the found relations (distance).
+Recall is TP / (TP + FN) over truth relations; precision is TP_calls / (TP_calls + FP) over eris's first flanks (side)
+or the found relations (distance).
 
 ## Layout
 

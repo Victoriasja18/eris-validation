@@ -35,9 +35,11 @@ def test_score_writes_every_table_with_labels(tmp_path):
     assert (both["TP"], both["FN"], both["recall"], both["precision"]) == (1, 1, 0.5, 1.0)
     assert list(pd.read_csv(out / "details.tsv", sep="\t").columns) == ["genome", "dimension", "class", "metric",
                                                                          "value"]
-    statuses = pd.read_csv(out / "relations.tsv", sep="\t").set_index("locus_tag")["status"].to_dict()
-    assert statuses == {"T1": "TP", "T2": "FN"}
-    assert all((out / f"{d}_confusion.tsv").exists() for d in ("side", "distance", "effect"))
+    relations = pd.read_csv(out / "relations.tsv", sep="\t").set_index("locus_tag")
+    assert relations["status"].to_dict() == {"T1": "TP", "T2": "FN"}
+    assert relations.loc["T2", "miss_cause"] == "not_called"  # cds.fna holds no gene on T2
+    assert all((out / f"{d}_confusion.tsv").exists() for d in ("side", "distance"))
+    assert not (out / "effect_confusion.tsv").exists()
 
 
 def test_a_genome_index_is_not_taken_for_an_is_database(tmp_path):

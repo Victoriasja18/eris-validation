@@ -1,5 +1,6 @@
 """
-Reads the eris outputs the validation needs: the flanks in `_report.tsv` and their coding sequences in `_cds.fna`.
+Reads the eris outputs the validation needs: the flanks in `_report.tsv`, and the coding sequences in `_cds.fna`
+(every gene pyfgs called on the assembly, reported or not).
 Only the files are read, never eris itself, so any eris version's output can be scored.
 """
 import csv
@@ -14,7 +15,6 @@ from eris_validation.isoforms import group_of
 # A gene crossing an end of the IS is reported as a passenger, but it is a flank on the side it sticks out of
 CONTEXT_SIDES = {'UPSTREAM': 'upstream', 'DOWNSTREAM': 'downstream',
                  'OVERLAPPING_START': 'upstream', 'OVERLAPPING_END': 'downstream'}
-DISRUPTING = ('DISRUPTED', 'TRUNCATED')  # a truncation is a kind of disruption
 COORDINATES = re.compile(r'(\S+):(\d+)-(\d+)')  # '<contig>:<start>-<end>' in a pyfgs-style description
 
 
@@ -41,10 +41,6 @@ class Flank:
         return self.context.startswith('OVERLAPPING')
 
 
-def disrupting(effect: str) -> bool:
-    return any(e in DISRUPTING for e in effect.split('|'))
-
-
 def split_gene_id(gene_id: str) -> tuple[str, int, int]:
     """'<contig>_<start>_<end>' (0-based, half-open) -> (contig, start, end)."""
     contig, start, end = gene_id.rsplit('_', 2)
@@ -65,6 +61,11 @@ def read_flanks(path: Path, groups: dict[str, str]) -> list[Flank]:
                 context=r['context'], gene_id=r['gene_id'], contig=split_gene_id(r['gene_id'])[0],
                 distance_bp=int(r['dist_bp']), hops=int(r['topo_hops']), effect=r['effect']))
     return flanks
+
+
+def read_all_cds(path: Path) -> list[str]:
+    """The coding sequence of every gene pyfgs called on the assembly."""
+    return [str(record.seq) for record in SeqIO.parse(path, 'fasta')]
 
 
 def read_cds(path: Path, gene_ids) -> dict[str, str]:

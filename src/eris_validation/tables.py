@@ -1,6 +1,6 @@
 """
-Turns a scored result into the output tables: confusion matrices for side, distance and effect, and a long-format
-summary table (counts and precision, recall, F1 per class), plus a long table of further statistics. A metric with
+Turns a scored result into the output tables: confusion matrices for side and distance, a summary table (counts and
+precision, recall, F1 per class), and a long table of further statistics. Effects are not scored. A metric with
 nothing to compute it from is left empty (None).
 """
 from pathlib import Path
@@ -8,7 +8,6 @@ from statistics import median
 
 import pandas as pd
 
-from eris_validation.eris_output import disrupting
 from eris_validation.score import Result
 from eris_validation.truth import SIDES
 
@@ -31,7 +30,7 @@ def truth_rows(result: Result) -> list[dict]:
 
 
 def confusion(result: Result, dimension: str) -> pd.DataFrame:
-    """Truth class (rows) × eris class (columns) for 'side', 'distance' or 'effect'."""
+    """Truth class (rows) × eris class (columns) for 'side' or 'distance'."""
     truths = truth_rows(result)
     # False flanks with no truth relation of their IS on either side; a wrong-side flank is already in its truth's row
     false = [r for r in result.rows if r['status'] == 'FP' and r['reason'] != 'wrong_side']
@@ -42,25 +41,12 @@ def confusion(result: Result, dimension: str) -> pd.DataFrame:
     elif dimension == 'distance':
         pairs = [(r['truth_band'], r['eris_band']) for r in truths if r['status'] == 'TP']
         index = columns = list(BANDS)
-    elif dimension == 'effect':
-        pairs = [(_truth_effect(r), r['eris_effect'] if r['status'] == 'TP' else 'not_found') for r in truths]
-        pairs += [('no_truth', r['eris_effect']) for r in false]
-        index = ['disrupted', 'none', 'unscored', 'no_truth']
-        columns = sorted({e for _, e in pairs} - {'not_found'}) + ['not_found']
     else:
         raise ValueError(f"unknown dimension {dimension!r}")
     table = pd.DataFrame(0, index=pd.Index(index, name='truth'), columns=pd.Index(columns, name='eris'))
     for truth, eris in pairs:
         table.loc[truth, eris] += 1
     return table
-
-
-def _truth_effect(row: dict) -> str:
-    return row['truth_effect'] if _scored(row) else 'unscored'
-
-
-def _scored(row: dict) -> bool:
-    return row['truth_effect'] in ('disrupted', 'none') and not row.get('inside_is')
 
 
 def _row(dimension: str, class_: str, tp: int, fn: int, tp_calls: int, fp: int) -> dict:
@@ -72,7 +58,7 @@ def _row(dimension: str, class_: str, tp: int, fn: int, tp_calls: int, fp: int) 
 def metrics(result: Result) -> list[dict]:
     """
     The quick summary: one row per scored class with its counts and precision, recall and F1. Recall is TP / (TP + FN)
-    over the truth relations; precision is TP_calls / (TP_calls + FP) over eris's calls. For side and effect the calls
+    over the truth relations; precision is TP_calls / (TP_calls + FP) over eris's calls. For side the calls
     are eris's first flanks while recall accepts the true CDS at any flank, so TP_calls is usually lower than TP: a
     wrong gene nearer the IS than the true CDS is an FP call, yet the true CDS still counts as found. For distance
     they are the same relations.
@@ -91,13 +77,6 @@ def metrics(result: Result) -> list[dict]:
         tp = int(table.loc[b, b])
         rows.append(_row('distance', b, tp, int(table.loc[b].sum()) - tp, tp, int(table[b].sum()) - tp))
 
-    # Effect: disrupted only. Calls are first flanks called DISRUPTED or TRUNCATED, leaving out those that match a
-    # truth relation whose effect is not scored; the truth is its disrupted relations.
-    called = [f for f in result.first if disrupting(f.flank.effect) and all(t.effect is not None for t in f.matched)]
-    called_true = sum(any(t.effect == 'disrupted' for t in f.matched) for f in called)
-    disrupted = [r for r in truths if _scored(r) and r['truth_effect'] == 'disrupted']
-    found = sum(r['status'] == 'TP' and disrupting(r['eris_effect']) for r in disrupted)
-    rows.append(_row('effect', 'disrupted', found, len(disrupted) - found, called_true, len(called) - called_true))
     return rows
 
 
@@ -112,7 +91,7 @@ def details(result: Result) -> list[dict]:
     add('side', 'both', 'pooled_recall', ratio(sum(r['reason'] in ('', 'wrong_side') for r in truths), len(truths)))
     for reason in ('wrong_side', 'wrong_IS'):
         add('side', 'both', reason, sum(r['reason'] == reason for r in truths))
-    for cause in ('gene', 'budget'):
+    for cause in ('budget', 'not_reported', 'not_called'):
         add('side', 'both', f'miss_{cause}', sum(r['miss_cause'] == cause for r in truths))
     add('side', 'both', 'unplaceable', sum(f.reason == 'unplaceable' for f in result.first))
 
@@ -133,7 +112,7 @@ def write_tables(result: Result, outdir: Path, labels: dict[str, str] | None = N
     genome, assembly_type) become the first columns of metrics.tsv and details.tsv.
     """
     outdir.mkdir(parents=True, exist_ok=True)
-    for dimension in ('side', 'distance', 'effect'):
+    for dimension in ('side', 'distance'):
         confusion(result, dimension).to_csv(outdir / f"{dimension}_confusion.tsv", sep='\t')
     for name, rows in (('metrics', metrics(result)), ('details', details(result))):
         table = pd.DataFrame(rows).round(3)

@@ -16,7 +16,7 @@ is_db: ../data/IS_n.mmi
 mode: collapse
 min_coverage: 0.30
 hops: 3          # the scored run
-reach_hops: 20   # a second run, only to tell 'budget' misses from 'gene' misses
+reach_hops: 20   # a second run, only to tell 'budget' misses from the others
 threads: 4
 
 # Scoring thresholds (same as eris's own relation benchmark)

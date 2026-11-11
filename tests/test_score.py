@@ -44,9 +44,13 @@ PLACES = {"g1": [Placement("chr", 102, 400, "+", 0.995)], "g2": [Placement("chr"
           "g8": [Placement("chr", 7000, 7600, "+", 1.0)]}
 
 
+# Every gene pyfgs called on the assembly (all of _cds.fna), placed on the reference
+CALLED = [p for gene in ("g1", "g2", "g3", "g6", "g7", "g8") for p in PLACES[gene]]
+
+
 @pytest.fixture
 def result():
-    return score(TRUTHS, FLANKS, PLACES.__getitem__, reach_flanks=REACH)
+    return score(TRUTHS, FLANKS, PLACES.__getitem__, reach_flanks=REACH, called=CALLED)
 
 
 def by(rows, key):
@@ -110,17 +114,28 @@ def test_wrong_side_is_checked_before_wrong_is():
     assert reasons == {("FN", "ISSen10_1"): "wrong_IS", ("FN", "IS3411_1"): "wrong_side", ("FP", "IS3411_1"): "wrong_side"}
 
 
-def test_matched_rows_flag_distance_effect_and_sequence(result):
+def test_matched_rows_flag_distance_and_sequence_but_not_effect(result):
     tags = by([r for r in result.rows if r["status"] == "TP"], "locus_tag")
-    assert {k: tags["T1"][k] for k in ("distance_band_ok", "effect_ok", "nucleotide_ok", "distance_error", "gene")} \
-        == {"distance_band_ok": True, "effect_ok": True, "nucleotide_ok": True, "distance_error": 2, "gene": "t1"}
+    assert {k: tags["T1"][k] for k in ("distance_band_ok", "nucleotide_ok", "distance_error", "gene")} \
+        == {"distance_band_ok": True, "nucleotide_ok": True, "distance_error": 2, "gene": "t1"}
+    assert "effect_ok" not in tags["T1"]
     assert (tags["T2"]["truth_band"], tags["T2"]["eris_band"], tags["T2"]["nucleotide_ok"]) == (
         "overlapping", "overlapping", False)
 
 
-def test_miss_cause_comes_from_the_reach_run(result):
+def test_miss_cause_comes_from_the_reach_run_then_the_called_genes(result):
     tags = by([r for r in result.rows if r["status"] == "FN"], "locus_tag")
-    assert (tags["T4"]["miss_cause"], tags["T3"]["miss_cause"]) == ("budget", "gene")
+    # T4: found with --hops 20; T3: its gene (g3) is called, but never reported as an upstream flank of ISEc9
+    assert (tags["T4"]["miss_cause"], tags["T3"]["miss_cause"]) == ("budget", "not_reported")
+
+
+def test_a_miss_is_not_called_when_no_called_gene_places_on_the_truth_cds():
+    t6 = truth("IS1_1", "IS1", "upstream", "T6", 30000, 30600, "+", 10, "none")
+    t7 = truth("IS1_1", "IS1", "downstream", "T7", 31000, 31600, "-", 10, "none")
+    called = [Placement("chr", 30000, 30600, "-", 1.0),  # on T6, but the other strand: a different gene
+              Placement("chr", 31050, 31600, "-", 1.0)]  # T7's gene, called but in no report
+    result = score([t6, t7], [], PLACES.__getitem__, reach_flanks=[], called=called)
+    assert {r["locus_tag"]: r["miss_cause"] for r in result.rows} == {"T6": "not_called", "T7": "not_reported"}
 
 
 def row(rows, dimension, class_):
@@ -147,18 +162,18 @@ def test_side_metrics(result):
     assert row(m, "side", "downstream")["f1"] == pytest.approx(0.4)
 
 
-def test_distance_and_effect_metrics(result):
+def test_distance_metrics_and_no_effect_metrics(result):
     m = metrics(result)
     assert counts(row(m, "distance", "near")) == (1, 0, 1, 0) and row(m, "distance", "near")["f1"] == 1.0
     assert row(m, "distance", "far")["recall"] is None
-    assert counts(row(m, "effect", "disrupted")) == (1, 1, 1, 1)  # T2 found, T4 missed; g2 right, g7 false
-    assert row(m, "effect", "disrupted")["precision"] == 0.5
+    assert {r["dimension"] for r in m} == {"side", "distance"}
 
 
 def test_details(result):
     d = details(result)
     assert value(d, "side", "both", "pooled_recall") == 0.75 and value(d, "side", "both", "wrong_side") == 1
     assert value(d, "side", "both", "wrong_IS") == 0 and value(d, "side", "both", "unplaceable") == 1
+    assert [value(d, "side", "both", f"miss_{c}") for c in ("budget", "not_reported", "not_called")] == [1, 1, 0]
     assert value(d, "distance", "all", "agreement") == 1.0 and value(d, "distance", "all", "median_abs_error") == 1
 
 
@@ -169,7 +184,6 @@ def test_side_confusion(result):
     assert side.loc["no_truth"].to_dict() == {"upstream": 1, "downstream": 1, "not_reported": 0}
 
 
-def test_effect_confusion_puts_misses_and_false_flanks_in_their_own_cells(result):
-    effect = confusion(result, "effect")
-    assert effect.loc["disrupted", "DISRUPTED"] == 1 and effect.loc["disrupted", "not_found"] == 1
-    assert effect.loc["no_truth", "DISRUPTED"] == 1
+def test_effect_is_not_scored(result):
+    with pytest.raises(ValueError):
+        confusion(result, "effect")

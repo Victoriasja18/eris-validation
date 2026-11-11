@@ -1,9 +1,9 @@
 # eris-validation
 
 Validates how well [eris](https://github.com/adimascf/eris) reports, for each insertion sequence (IS), which CDS lies
-**upstream** and **downstream**, **how far** away, and whether the insertion **disrupts** it. For every assembly it
-gives precision, recall and F1 for side, distance and effect, confusion matrices, and a row-level table of every wrong
-prediction.
+**upstream** and **downstream** and **how far** away. For every assembly it gives precision, recall and F1 for side
+and distance, confusion matrices, and a row-level table of every wrong prediction. Effects (disrupted, truncated) are
+not scored for now; they are only carried into `relations.tsv`.
 
 The truth is always curated outside this repo. The scorer reads only eris's output files, so any eris version can be
 validated. Design: [docs/design.md](docs/design.md). Terms: [CONTEXT.md](CONTEXT.md).
@@ -64,18 +64,21 @@ uv run erisval score --report run_report.tsv --cds run_cds.fna --reference ref.f
 
 | file | content |
 |---|---|
-| `metrics.tsv` | the quick summary: `genome, assembly_type, dimension, class, TP, FN, TP_calls, FP, precision, recall, f1`, one row per class (side: upstream/downstream/both; distance: overlapping/near/far; effect: disrupted) |
+| `metrics.tsv` | the quick summary: `genome, assembly_type, dimension, class, TP, FN, TP_calls, FP, precision, recall, f1`, one row per class (side: upstream/downstream/both; distance: overlapping/near/far) |
 | `details.tsv` | further statistics, `dimension, class, metric, value`: pooled recall, wrong-side, wrong-IS and miss counts, unplaceable genes, distance band agreement and errors |
-| `relations.tsv` | one row per truth relation (`TP`, `FN`) and per false first flank (`FP`), with a `reason` for FN and FP (FN: `wrong_side`, `wrong_IS`, `not_found`; FP: `unplaceable`, `wrong_side`, `wrong_IS`, `not_in_truth`), both distances and effects, `distance_band_ok`, `effect_ok`, `distance_error`, `nucleotide_ok` and `miss_cause` |
+| `relations.tsv` | one row per truth relation (`TP`, `FN`) and per false first flank (`FP`), with a `reason` for FN and FP (FN: `wrong_side`, `wrong_IS`, `not_found`; FP: `unplaceable`, `wrong_side`, `wrong_IS`, `not_in_truth`), both distances and effects (unscored), `distance_band_ok`, `distance_error`, `nucleotide_ok` and, for FN, `miss_cause` (`budget`, `not_reported`, `not_called`) |
 | `side_confusion.tsv` | truth side × eris side |
 | `distance_confusion.tsv` | truth distance band × eris band, for relations found on their side |
-| `effect_confusion.tsv` | truth effect × eris effect |
 
 In `metrics.tsv`, recall = TP / (TP + FN) over the truth relations, and precision = TP_calls / (TP_calls + FP) over
-eris's calls. For side and effect the calls are eris's first flank per side per graph branch, while recall accepts
+eris's calls. For side the calls are eris's first flank per side per graph branch, while recall accepts
 the true CDS at any flank, so TP_calls is usually lower than TP: when a wrong gene (often the IS's own transposase or
 a short ORF) sits nearer the IS than the true CDS, the true CDS still counts as found, but eris's call is an FP. For
-distance they are the same relations. Effect is disrupted only; eris `TRUNCATED` counts as disrupted.
+distance they are the same relations.
+
+Every FN gets a miss cause, checked in order: `budget` (the `reach_hops` run reports it), `not_reported` (pyfgs called
+a gene that is the truth CDS, but eris does not report it as a flank of that IS on that side), `not_called` (no gene
+in `_cds.fna`, which holds every gene pyfgs called, is the truth CDS).
 This workflow only reports; it never fails on low scores.
 
 ## Tests

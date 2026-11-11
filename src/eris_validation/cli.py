@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from eris_validation.eris_output import ErisOutputError, read_cds, read_flanks
+from eris_validation.eris_output import ErisOutputError, read_all_cds, read_cds, read_flanks
 from eris_validation.isoforms import read_groups
 from eris_validation.place import GenePlacer
 from eris_validation.score import Thresholds, score
@@ -83,7 +83,8 @@ def run_score(args):
         return placer.place(sequences[gene_id])
 
     th = Thresholds(**{name: getattr(args, name) for name in vars(Thresholds())})
-    result = score(truths, flanks, place, reach_flanks, th)
+    called = [p for seq in read_all_cds(args.cds) for p in placer.place(seq)]  # to tell not_called from not_reported
+    result = score(truths, flanks, place, reach_flanks, th, called)
     write_tables(result, args.outdir, labels)
     print(summary(metrics(result), details(result)), file=sys.stderr)
 

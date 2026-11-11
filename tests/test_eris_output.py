@@ -1,6 +1,6 @@
 import pytest
 
-from eris_validation.eris_output import ErisOutputError, disrupting, read_cds, read_flanks
+from eris_validation.eris_output import ErisOutputError, read_all_cds, read_cds, read_flanks
 
 REPORT = (
     "locus_id\ttarget\ttarget_identity\tcontig_path\tgene_id\tcontext\tdist_bp\ttopo_hops\torientation\teffect\n"
@@ -20,8 +20,10 @@ def test_flanks_take_the_first_target_s_group_and_skip_inside_and_empty_rows(tmp
                                  ("L1", "IS26", "downstream", "5_0_60", "5", 40, 1, False)]
 
 
-def test_truncated_or_disrupted_counts_as_disrupting():
-    assert disrupting("TRUNCATED") and disrupting("DISRUPTED|UPREGULATED") and not disrupting("NONE")
+def test_all_called_genes_are_read_whatever_their_names(tmp_path):
+    path = tmp_path / "cds.fna"
+    path.write_text(">chr_FGS_1 chr:11-90 strand=+\nATGAAA\n>chr_FGS_2 chr:101-200 strand=-\nATGCCC\nTAA\n")
+    assert read_all_cds(path) == ["ATGAAA", "ATGCCCTAA"]
 
 
 @pytest.mark.parametrize("fasta", [

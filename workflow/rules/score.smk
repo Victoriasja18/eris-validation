@@ -19,8 +19,7 @@ rule score:
         groups=rules.clone_eris.output.groups,
     output:
         multiext(OUT + "/{genome}/{assembly_type}/",
-                 "metrics.tsv", "details.tsv", "relations.tsv", "side_confusion.tsv", "distance_confusion.tsv",
-                 "effect_confusion.tsv"),
+                 "metrics.tsv", "details.tsv", "relations.tsv", "side_confusion.tsv", "distance_confusion.tsv"),
     params:
         outdir=OUT + "/{genome}/{assembly_type}",
         replicons=lambda wc: f"--replicons {sample(wc).replicons}" if sample(wc).replicons else "",

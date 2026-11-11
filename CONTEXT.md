@@ -41,7 +41,10 @@ An eris gene that cannot be aligned to the reference, so it can match no truth r
 Overlapping, near (0–150 bp) or far; the classes distance is scored in.
 
 **Miss cause**:
-Why a truth relation was not found: **budget** (found with a larger hops budget) or **gene** (wrong or absent gene call).
+Why a truth relation was not found, checked in order: **budget** (found with a larger hops budget), **not_reported**
+(pyfgs called the gene, but eris does not report it as a flank of that IS on that side), **not_called** (pyfgs called
+no gene that is the truth CDS).
+_Avoid_: gene (the old catch-all for not_reported and not_called)
 
 ## Relationships
 

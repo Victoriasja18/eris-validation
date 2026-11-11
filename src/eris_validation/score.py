@@ -12,11 +12,15 @@ An eris gene matches a truth CDS when one of its placements on the reference lie
 and overlaps it by at least `min_overlap` of the shorter of the two. Only flanks of loci in the same isoform group
 count. Recall is over truth relations and looks at every flank; precision is over first flanks only, because the
 truth holds only the nearest CDS on each side.
+
+Every FN also gets a miss cause: `budget` (the larger-hops run reports it), else `not_reported` (pyfgs called a gene
+on the truth CDS, but eris never reports it as a flank of this IS on this side), else `not_called` (no called gene is
+the truth CDS). Effects are not scored.
 """
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from eris_validation.eris_output import Flank, disrupting
+from eris_validation.eris_output import Flank
 from eris_validation.place import Placement
 from eris_validation.truth import SIDES, TruthRelation
 
@@ -91,10 +95,11 @@ def sequence_agrees(p: Placement, t: TruthRelation, th: Thresholds) -> bool:
 
 
 def score(truths: list[TruthRelation], flanks: list[Flank], place: Place, reach_flanks: list[Flank] | None = None,
-          th: Thresholds = Thresholds()) -> Result:
+          th: Thresholds = Thresholds(), called: list[Placement] | None = None) -> Result:
     """
     Scores eris's flanks against the truth. `reach_flanks` come from the same assembly run with a larger hops
-    budget: a miss they find is put down to the budget rather than to a wrong or absent gene.
+    budget: a miss they find is put down to the budget. `called` are the placements of every gene pyfgs called on
+    the assembly: any other miss is `not_reported` when one of them is the truth CDS, else `not_called`.
     """
     def on_cds(t: TruthRelation, candidates: list[Flank]) -> list[Flank]:
         return [f for f in candidates if any(matches(p, t, th) for p in place(f.gene_id))]
@@ -113,8 +118,10 @@ def score(truths: list[TruthRelation], flanks: list[Flank], place: Place, reach_
             result.rows.append(_found_row(t, on_side[0], place, th))
             continue
         cause = ''
-        if reach_flanks is not None:
-            cause = 'budget' if any(f.side == t.side for f in matching(t, reach_flanks)) else 'gene'
+        if reach_flanks is not None and any(f.side == t.side for f in matching(t, reach_flanks)):
+            cause = 'budget'
+        elif called is not None:
+            cause = 'not_reported' if any(matches(p, t, th) for p in called) else 'not_called'
         other_is = [f for f in on_cds(t, flanks) if f.group != t.group and f.side == t.side]
         if found:
             reason, f = 'wrong_side', nearest(found)
@@ -160,7 +167,6 @@ def _found_row(t: TruthRelation, f: Flank, place: Place, th: Thresholds) -> dict
     row.update(
         eris_placement=f"{p.replicon}:{p.start}-{p.end}({p.strand})",
         distance_band_ok=row['truth_band'] == row['eris_band'],
-        effect_ok=None if t.effect is None else disrupting(f.effect) == (t.effect == 'disrupted'),
         distance_error=abs(f.distance_bp - max(0, t.distance_bp)),  # eris reports an overlap as distance 0
         nucleotide_ok=any(sequence_agrees(p, t, th) for p in placements))
     return row
@@ -190,7 +196,6 @@ def _row(status: str, reason: str, truth: TruthRelation | None, flank: Flank | N
         'eris_effect': f.effect if f else '',
         'eris_placement': '',
         'distance_band_ok': None,
-        'effect_ok': None,
         'distance_error': abs(f.distance_bp - max(0, t.distance_bp)) if t and f else None,
         'nucleotide_ok': None,
         'miss_cause': '',
