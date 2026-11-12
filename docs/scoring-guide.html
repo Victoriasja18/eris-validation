@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>eris-validation Scoring Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single reading column (~720px) with full-width interactive figures; a sticky section nav on top */
+:root{
+  --bg:#f7f8f6; --surface:#ffffff; --sunk:#eef0ec; --fg:#1d2321; --muted:#5b6560; --faint:#8a938e; --line:#d9ddd8;
+  --is:#5a4fc4; --is-bg:#eceafd; --is-ink:#2f2780;
+  --ok:#0f7a5c; --ok-bg:#dff4ec; --ok-ink:#07513d;
+  --bad:#c2502b; --bad-bg:#fbe9e2; --bad-ink:#7a2c12;
+  --warn:#9a6a10; --warn-bg:#fbf0d9;
+  --accent:#2b6cb0; --accent-bg:#e4effa;
+  --display:"Space Grotesk",ui-sans-serif,system-ui,sans-serif;
+  --body:"Inter",ui-sans-serif,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141917; --surface:#1c2220; --sunk:#232a27; --fg:#e6ebe8; --muted:#a3ada8; --faint:#77817c; --line:#323a37;
+  --is:#a39cf2; --is-bg:#2c2858; --is-ink:#dcd8ff;
+  --ok:#4cc79c; --ok-bg:#163a2f; --ok-ink:#bdf0dc;
+  --bad:#ef8a65; --bad-bg:#45231a; --bad-ink:#ffd5c6;
+  --warn:#e7b85a; --warn-bg:#3a2f16;
+  --accent:#7fb3ea; --accent-bg:#1e3349; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --surface:#1c2220; --sunk:#232a27; --fg:#e6ebe8; --muted:#a3ada8; --faint:#77817c; --line:#323a37;
+  --is:#a39cf2; --is-bg:#2c2858; --is-ink:#dcd8ff;
+  --ok:#4cc79c; --ok-bg:#163a2f; --ok-ink:#bdf0dc;
+  --bad:#ef8a65; --bad-bg:#45231a; --bad-ink:#ffd5c6;
+  --warn:#e7b85a; --warn-bg:#3a2f16;
+  --accent:#7fb3ea; --accent-bg:#1e3349; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:860px;margin:0 auto;padding-block:8px 64px}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);display:flex;gap:4px 18px;flex-wrap:wrap;padding-block:12px;font-size:14px}
+nav a{color:var(--muted);text-decoration:none}
+nav a:hover,nav a:focus-visible{color:var(--fg)}
+header{padding-block:40px 8px}
+.eyebrow{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+h1,h2,h3{font-family:var(--display);font-weight:600;text-wrap:balance;line-height:1.2;margin:0}
+h1{font-size:clamp(30px,5vw,42px);margin-top:8px}
+h2{font-size:26px;margin-top:64px;padding-top:8px}
+h3{font-size:18px;margin-top:28px}
+p,li{max-width:68ch}
+p{margin:12px 0}
+.lede{font-size:18px;color:var(--muted)}
+code{font:0.88em var(--mono);background:var(--sunk);padding:1px 5px;border-radius:4px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin:20px 0}
+.fig svg{display:block;width:100%;height:auto}
+.cap{font-size:13px;color:var(--faint);margin-top:10px}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.pills button{font:13px var(--body);color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer}
+.pills button:hover{color:var(--fg);border-color:var(--faint)}
+.pills button[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
+.panel{background:var(--sunk);border-radius:8px;padding:12px 14px;font-size:14px;color:var(--muted);min-width:0}
+.panel b{display:block;color:var(--fg);font-weight:500;margin-bottom:4px}
+.chip{display:inline-block;font:500 12px var(--mono);padding:2px 8px;border-radius:5px;margin-right:6px;vertical-align:1px}
+.c-tp{background:var(--ok-bg);color:var(--ok-ink)} .c-fn{background:var(--warn-bg);color:var(--warn)} .c-fp{background:var(--bad-bg);color:var(--bad-ink)} .c-no{background:var(--surface);color:var(--faint);border:1px solid var(--line)}
+.count{font:13px var(--mono);color:var(--faint);margin-top:10px}
+.tbl{overflow-x:auto;margin:16px 0}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:500 12px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+td.num{font-family:var(--mono);text-align:right}
+.ctl{display:grid;grid-template-columns:160px minmax(0,1fr) 72px;gap:10px;align-items:center;font-size:14px;color:var(--muted);margin:6px 0}
+.ctl output{font:14px var(--mono);color:var(--fg);text-align:right}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+.stat{background:var(--sunk);border-radius:8px;padding:10px 12px;min-width:0}
+.stat span{display:block;font-size:12px;color:var(--faint)}
+.stat b{font:500 17px var(--mono)}
+.cm{display:grid;grid-template-columns:minmax(110px,1.3fr) repeat(3,minmax(0,1fr)) minmax(70px,.9fr);gap:4px;font-size:14px;font-variant-numeric:tabular-nums;min-width:520px}
+.cm div{padding:9px 6px;border-radius:6px;text-align:center}
+.cm .h{color:var(--faint);font:12px var(--mono)} .cm .rh{text-align:left}
+.cm .c{background:var(--sunk);font-family:var(--mono)} .cm .d{background:var(--ok-bg);color:var(--ok-ink);font:500 14px var(--mono)} .cm .x{background:var(--bad-bg);color:var(--bad-ink);font-family:var(--mono)}
+.note{border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:18px 0;background:var(--surface)}
+.note b{font-weight:500}
+/* svg roles */
+.trk{stroke:var(--line);stroke-width:1.5}
+.is-same{fill:var(--is-bg);stroke:var(--is)} .is-other{fill:var(--bad-bg);stroke:var(--bad)}
+.t-is{fill:var(--is-ink);font:500 12px var(--mono)} .t-is-o{fill:var(--bad-ink);font:500 12px var(--mono)}
+.g-ok{fill:var(--ok-bg);stroke:var(--ok)} .g-bad{fill:var(--bad-bg);stroke:var(--bad)} .g-oth{fill:var(--sunk);stroke:var(--faint)} .g-miss{fill:none;stroke:var(--faint);stroke-dasharray:4 3}
+.lbl{fill:var(--muted);font:12px var(--mono)} .rowlbl{fill:var(--fg);font:500 13px var(--body)} .side{fill:var(--faint);font:12px var(--mono)}
+.band-ov{fill:var(--bad-bg)} .band-near{fill:var(--ok-bg)} .band-far{fill:var(--sunk)}
+.mk-t{fill:var(--ok)} .mk-e{fill:var(--bad)} .rule{stroke:var(--muted);stroke-width:1}
+@media (prefers-reduced-motion:no-preference){.fig svg *{transition:x .25s ease,width .25s ease}}
+@media (max-width:520px){.ctl{grid-template-columns:1fr 64px}.ctl label{grid-column:1/-1}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<nav aria-label="Sections"><a href="#two-views">Two views</a><a href="#side">Side reasons</a><a href="#proposal">Proposed change</a><a href="#bands">Distance bands</a><a href="#pairs">One-to-one</a><a href="#findings">Findings</a></nav>
+
+<header>
+  <div class="eyebrow">eris-validation · EC958</div>
+  <h1>How eris's IS–CDS relations are scored</h1>
+  <p class="lede">For each insertion sequence, eris reports which CDS sits upstream and downstream and how far away. This guide explains every status and reason the scorer gives, using real cases from the EC958 real-read assembly.</p>
+  <p class="cap">Counts come from the 13 Nov 2026 run of eris <code>7b9a6dc</code>, before the best-score naming fix <code>e9887c1</code>. That fix brings FN <code>wrong_IS</code> on the real assembly from 24 down to 11.</p>
+</header>
+
+<section id="two-views">
+<h2>Two views of the same calls</h2>
+<p>The scorer reads eris's output from two directions, and each direction answers a different question.</p>
+<div class="duo">
+  <div class="panel"><b>Recall: every truth relation</b>A truth relation is one CDS on one side of one IS in the reference. Did eris report that CDS, on that side, under that IS's isoform group, at any flank? The answer is <span class="chip c-tp">TP</span> or <span class="chip c-fn">FN</span>.</div>
+  <div class="panel"><b>Precision: every eris first flank</b>A first flank is eris's nearest reported gene on one side of one graph branch of a locus. It is eris's actual claim. Is that claim a truth relation of this IS on this side? The answer is <span class="chip c-tp">TP</span> or <span class="chip c-fp">FP</span>.</div>
+</div>
+<p>Because the two views overlap, one wrong call can produce two rows: an FN for the truth it missed and an FP for the wrong claim it made. That is correct, not double counting. Each row feeds a different metric.</p>
+<div class="tbl"><table>
+<thead><tr><th>Row type</th><th>Reasons, checked in this order</th></tr></thead>
+<tbody>
+<tr><td>Truth relation</td><td><code>TP</code> → FN <code>wrong_side</code> → FN <code>wrong_IS</code> → FN <code>not_found</code></td></tr>
+<tr><td>eris first flank</td><td><code>TP</code> → FP <code>unplaceable</code> → FP <code>wrong_side</code> → FP <code>wrong_IS</code> → FP <code>not_in_truth</code></td></tr>
+</tbody></table></div>
+</section>
+
+<section id="side">
+<h2>Side reasons, one at a time</h2>
+<p>Pick a reason. The upper track is the reference truth; the lower track is what eris reported. Purple is the right IS; coral marks a wrong call or a differently named IS; green is the correct gene.</p>
+<div class="fig">
+  <div class="pills" id="sidePills" role="group" aria-label="Side reason"></div>
+  <svg id="sideSvg" viewBox="0 0 680 220" role="img" aria-labelledby="sideTitle"><title id="sideTitle">Truth and eris tracks</title></svg>
+  <div class="duo">
+    <div class="panel"><b>Recall row</b><span id="sideRec"></span></div>
+    <div class="panel"><b>Precision row</b><span id="sidePre"></span></div>
+  </div>
+  <div class="count" id="sideCount"></div>
+</div>
+</section>
+
+<section id="proposal">
+<h2>Proposed change to the reasons</h2>
+<p>Two of the reasons mean the same thing whether they appear on an FN or an FP row. Only one is misleading: FN <code>wrong_IS</code> also fires when the gene appears only as a deep flank of an unrelated locus, kilobases away, where eris never claimed it.</p>
+<div class="tbl"><table>
+<thead><tr><th>Case</th><th>Today</th><th>Proposed</th><th class="num">Real</th></tr></thead>
+<tbody>
+<tr><td>First flank on the opposite side</td><td>FN + FP <code>wrong_side</code></td><td>Unchanged, counted once as <code>mislabelled_side</code> in details</td><td class="num">1</td></tr>
+<tr><td>First flank under another IS</td><td>FN + FP <code>wrong_IS</code></td><td>Unchanged, counted once as <code>mislabelled_IS</code> in details</td><td class="num">2</td></tr>
+<tr><td>Deep flank of another IS only</td><td>FN <code>wrong_IS</code></td><td>FN <code>not_found</code>, with <code>seen_as = other_IS_far</code></td><td class="num">≈22</td></tr>
+<tr><td>No locus reports the gene</td><td>FN <code>not_found</code></td><td>Unchanged</td><td class="num">32</td></tr>
+<tr><td>Gene not a truth CDS / can't be placed</td><td>FP <code>not_in_truth</code> / <code>unplaceable</code></td><td>Unchanged</td><td class="num">34 / 10</td></tr>
+</tbody></table></div>
+<p>None of this changes precision, recall or F1. It changes only how misses and false calls are labelled in <code>relations.tsv</code> and counted in <code>details.tsv</code>. Turning the FN rows into FPs instead would remove them from the recall denominator and make recall look better than it is.</p>
+</section>
+
+<section id="bands">
+<h2>Distance bands</h2>
+<p>Distance is the gap in base pairs between the IS end and the nearest end of the flanking CDS. The truth gives a negative distance when the CDS runs into the IS. eris reports an overlap as 0 bp with an <code>OVERLAPPING</code> context.</p>
+<div class="fig">
+  <svg id="bandSvg" viewBox="0 0 680 150" role="img" aria-labelledby="bandTitle"><title id="bandTitle">Distance number line</title></svg>
+  <div class="ctl"><label for="tdIn">Truth distance</label><input type="range" id="tdIn" min="-300" max="600" step="1" value="40"><output id="tdOut" for="tdIn"></output></div>
+  <div class="ctl"><label for="edIn">eris distance</label><input type="range" id="edIn" min="0" max="600" step="1" value="0"><output id="edOut" for="edIn"></output></div>
+  <div class="ctl"><label for="eoIn">eris says overlapping</label><input type="checkbox" id="eoIn" style="justify-self:start"><span></span></div>
+  <div class="stats">
+    <div class="stat"><span>Truth band</span><b id="tbOut"></b></div>
+    <div class="stat"><span>eris band</span><b id="ebOut"></b></div>
+    <div class="stat"><span>Bands agree</span><b id="agOut"></b></div>
+    <div class="stat"><span>distance_error</span><b id="erOut"></b></div>
+  </div>
+  <p class="cap">Overlapping: truth below 0, or eris context <code>OVERLAPPING</code>. Near: 0 to 150 bp. Far: above 150 bp. <code>distance_error = |eris − max(0, truth)|</code>.</p>
+</div>
+<p>Only truth relations that eris found (TP on side) get a distance score. The grid below compares their bands. The diagonal is agreement; off-diagonal cells in a row are FN for that truth band, and off-diagonal cells in a column are FP for that eris band.</p>
+<div class="fig"><div class="tbl" style="margin:0"><div class="cm">
+  <div class="h"></div><div class="h">eris overlapping</div><div class="h">eris near</div><div class="h">eris far</div><div class="h">recall</div>
+  <div class="h rh">truth overlapping</div><div class="d">1</div><div class="x">7</div><div class="c">3</div><div class="h">1 / 11</div>
+  <div class="h rh">truth near</div><div class="x">9</div><div class="d">23</div><div class="c">3</div><div class="h">23 / 35</div>
+  <div class="h rh">truth far</div><div class="c">0</div><div class="c">1</div><div class="d">13</div><div class="h">13 / 14</div>
+  <div class="h rh">precision</div><div class="h">1 / 10</div><div class="h">23 / 31</div><div class="h">13 / 19</div><div class="h"></div>
+</div></div>
+<p class="cap">Real assembly, 60 relations. Agreement 0.617, median error 0 bp, max 604 bp, 72% within 10 bp, 83% within 50 bp. Coral cells are the 16 edge cases explained below.</p></div>
+</section>
+
+<section id="pairs">
+<h2>One-to-one comparisons</h2>
+<p>Each example is one real gene: where the reference puts it relative to the IS, and where eris puts the same gene relative to the same IS.</p>
+<div class="fig">
+  <div class="pills" id="pairPills" role="group" aria-label="Example"></div>
+  <svg id="pairSvg" viewBox="0 0 680 190" role="img" aria-labelledby="pairTitle"><title id="pairTitle">Truth versus eris distance</title></svg>
+  <div class="stats">
+    <div class="stat"><span>Truth distance</span><b id="pTd"></b></div>
+    <div class="stat"><span>eris distance</span><b id="pEd"></b></div>
+    <div class="stat"><span>Band</span><b id="pBb"></b></div>
+    <div class="stat"><span>distance_error</span><b id="pEr"></b></div>
+  </div>
+  <p id="pWhy" style="font-size:15px;color:var(--muted);margin-bottom:0"></p>
+</div>
+<h3>Why FN and FP rows have no distance score</h3>
+<p>A distance comparison needs two numbers for one gene. An FN <code>not_found</code> has no eris distance, and an FP <code>not_in_truth</code> has no truth distance. A deep-flank FN <code>wrong_IS</code> does have an eris number, but it measures the distance to a different IS, so comparing it with the truth would mix two measurements. These rows already count once in the side scores; adding them to distance would count the same miss twice.</p>
+</section>
+
+<section id="findings">
+<h2>What the distance numbers say</h2>
+<p>16 of the 23 band disagreements on the real assembly have an error of 0 bp. They come from how 0 bp and overlaps are defined, not from eris placing genes in the wrong spot:</p>
+<ul>
+  <li><b>Touching (9 rows).</b> The truth counts 0 bp as near, because only a negative distance is overlapping. eris calls the same 0 bp overlapping.</li>
+  <li><b>Hidden overlap (7 rows).</b> The truth says the CDS runs into the IS, for example by 65 bp. eris reports 0 bp without flagging an overlap, and the error formula then gives 0, so the overlap disappears from the numbers.</li>
+</ul>
+<p>That is why the overlapping band scores so badly while the median error is 0 bp. Two possible fixes: treat 0 bp as overlapping on both sides, and record separately whether truth and eris agree that the CDS overlaps the IS.</p>
+<div class="note"><b>Real distance errors</b> do exist: IS1A_2 to RS30330 is 101 bp in the reference and 287 bp in eris, and IS682 to tnpC overlaps by 2 bp in the reference but is 604 bp away in eris, probably measured from a different IS end.</div>
+</section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+function pills(host,items,onPick){
+  items.forEach((it,i)=>{const b=document.createElement("button");b.type="button";b.textContent=it.n;b.setAttribute("aria-pressed","false");b.addEventListener("click",()=>pick(i));host.appendChild(b);});
+  function pick(i){[...host.children].forEach((b,j)=>b.setAttribute("aria-pressed",String(i===j)));onPick(items[i]);}
+  pick(0);
+}
+/* ---------- side reasons ---------- */
+const SIDE=[
+{n:"TP",t:{is:"ISEc12",g:[{x:170,l:"gene A",k:"ok"}]},e:{is:"ISEc12",g:[{x:170,l:"gene A",k:"ok"}]},
+ r:["c-tp","TP","The truth CDS is reported on its true side by its own IS group."],p:["c-tp","TP","eris's nearest flank is that truth CDS."],c:"Real assembly: 60 truth relations found."},
+{n:"wrong_side",t:{is:"ISEc12",g:[{x:170,l:"gene A",k:"ok"}]},e:{is:"ISEc12",g:[{x:490,l:"gene A",k:"bad"}]},
+ r:["c-fn","FN wrong_side","Its own IS reports gene A, but downstream instead of upstream."],p:["c-fp","FP wrong_side","The downstream call is wrong. Same mistake, second row."],c:"Real assembly: 1 pair. Every FN wrong_side has a matching FP."},
+{n:"wrong_IS · first flank",t:{is:"ISEc12",g:[{x:170,l:"gene A",k:"ok"}]},e:{is:"IS1R",o:1,g:[{x:170,l:"gene A",k:"bad"}]},
+ r:["c-fn","FN wrong_IS","Right gene, right side, but the locus is named IS1R, another isoform group."],p:["c-fp","FP wrong_IS","eris's nearest flank claims gene A for IS1R. Same mistake, second row."],c:"Real assembly: 2 pairs. A real naming or placement error."},
+{n:"wrong_IS · deep flank",t:{is:"ISEc12",g:[{x:170,l:"gene A",k:"ok"}]},e:{is:"IS1R",o:1,far:1,g:[{x:84,l:"gene A",k:"bad"},{x:216,l:"gene X",k:"oth"}]},
+ r:["c-fn","FN wrong_IS today","Gene A only appears 36 kb out, passed while walking the graph from an IS1R repeat hub. Proposed: not_found with seen_as = other_IS_far."],p:["c-no","not scored","Only gene X, the nearest flank, is scored for precision. Gene A was never eris's claim."],c:"Real assembly: about 22 of the 24 FN wrong_IS rows."},
+{n:"not_found",t:{is:"ISEc12",g:[{x:170,l:"gene A",k:"ok"}]},e:{is:"ISEc12",g:[{x:170,l:"no gene A",k:"miss"}]},
+ r:["c-fn","FN not_found","No locus reports gene A on any side. miss_cause says why: budget (found with 20 hops), not_reported (gene called, never a flank) or not_called (no gene called there)."],p:["c-no","nothing","eris made no call here to score."],c:"Real assembly: 32 rows."},
+{n:"not_in_truth",t:{is:"ISEc12",g:[]},e:{is:"ISEc12",g:[{x:170,l:"gene Y",k:"bad"}]},
+ r:["c-no","nothing","No truth relation is involved."],p:["c-fp","FP not_in_truth","eris's nearest flank, gene Y, places on the reference but is not a truth CDS for any IS on that side."],c:"Real assembly: 34 rows."},
+{n:"unplaceable",t:{is:"ISEc12",g:[]},e:{is:"ISEc12",g:[{x:170,l:"gene ?",k:"miss"}]},
+ r:["c-no","nothing","No truth relation is involved."],p:["c-fp","FP unplaceable","eris's nearest flank can't be aligned to the reference, often because of a chimeric or misassembled contig, so it can match nothing."],c:"Real assembly: 10 rows."}];
+const gcls={ok:"g-ok",bad:"g-bad",oth:"g-oth",miss:"g-miss"};
+function sideTrack(lbl,s,y){
+  let o=`<text class="rowlbl" x="60" y="${y-28}">${lbl}</text><line class="trk" x1="60" y1="${y}" x2="620" y2="${y}"/>`;
+  if(s.far)o+=`<line class="rule" x1="162" y1="${y-8}" x2="156" y2="${y+8}"/><line class="rule" x1="170" y1="${y-8}" x2="164" y2="${y+8}"/><text class="lbl" x="163" y="${y-14}" text-anchor="middle">36 kb</text>`;
+  o+=`<polygon class="${s.o?"is-other":"is-same"}" stroke-width="1" points="296,${y-13} 368,${y-13} 384,${y} 368,${y+13} 296,${y+13}"/><text class="${s.o?"t-is-o":"t-is"}" x="338" y="${y+4}" text-anchor="middle">${s.is}</text>`;
+  s.g.forEach(g=>{o+=`<rect class="${gcls[g.k]}" stroke-width="1" x="${g.x}" y="${y-10}" width="72" height="20" rx="4"/><text class="lbl" x="${g.x+36}" y="${y+28}" text-anchor="middle">${g.l}</text>`;});
+  return o;
+}
+pills($("sidePills"),SIDE,c=>{
+  $("sideSvg").innerHTML=`<title id="sideTitle">${c.n}</title><text class="side" x="206" y="20" text-anchor="middle">upstream</text><text class="side" x="526" y="20" text-anchor="middle">downstream</text>`+sideTrack("Truth",c.t,72)+sideTrack("eris",c.e,170);
+  const chip=a=>`<span class="chip ${a[0]}">${a[1]}</span>${a[2]}`;
+  $("sideRec").innerHTML=chip(c.r);$("sidePre").innerHTML=chip(c.p);$("sideCount").textContent=c.c;
+});
+/* ---------- bands ---------- */
+const NEAR=150,X=v=>60+(v+300)*(560/900);
+const band=(d,ov)=>(ov||d<0)?"overlapping":(d<=NEAR?"near":"far");
+const clampX=x=>Math.min(Math.max(x,80),600);
+function drawBands(){
+  const t=+$("tdIn").value,o=$("eoIn").checked,e=o?0:+$("edIn").value;
+  $("edIn").disabled=o;$("tdOut").textContent=t+" bp";$("edOut").textContent=e+" bp";
+  const a=band(t,false),b=band(e,o),err=Math.abs(e-Math.max(0,t));
+  $("tbOut").textContent=a;$("ebOut").textContent=b;$("agOut").textContent=a===b?"yes":"no";
+  $("agOut").style.color=a===b?"var(--ok)":"var(--bad)";
+  $("erOut").textContent=err+" bp";
+  const z=X(0),n=X(NEAR);
+  $("bandSvg").innerHTML=`<title id="bandTitle">Distance number line</title>
+  <rect class="band-ov" x="60" y="50" width="${z-60}" height="36" rx="4"/><rect class="band-near" x="${z}" y="50" width="${n-z}" height="36" rx="4"/><rect class="band-far" x="${n}" y="50" width="${620-n}" height="36" rx="4"/>
+  <text class="lbl" x="${(60+z)/2}" y="72" text-anchor="middle">overlapping</text><text class="lbl" x="${(z+n)/2}" y="72" text-anchor="middle">near</text><text class="lbl" x="${(n+620)/2}" y="72" text-anchor="middle">far</text>
+  <text class="lbl" x="${z}" y="104" text-anchor="middle">0</text><text class="lbl" x="${n}" y="104" text-anchor="middle">150</text>
+  <polygon class="mk-t" points="${X(t)-7},22 ${X(t)+7},22 ${X(t)},44"/><text class="lbl" x="${clampX(X(t))}" y="14" text-anchor="middle">truth ${t}</text>
+  <polygon class="mk-e" points="${X(e)-7},128 ${X(e)+7},128 ${X(e)},92"/><text class="lbl" x="${clampX(X(e))}" y="144" text-anchor="middle">eris ${e}</text>`;
+}
+["tdIn","edIn","eoIn"].forEach(id=>$(id).addEventListener("input",drawBands));drawBands();
+/* ---------- one-to-one ---------- */
+const PAIRS=[
+{n:"Exact · far",is:"ISEc1",side:"up",g:"ansP",t:667,e:667,w:"Same gene, same gap. Both far, error 0."},
+{n:"Exact · near",is:"IS4",side:"up",g:"adhE",t:40,e:40,w:"Same gene, same gap. Both near, error 0."},
+{n:"Near → far",is:"IS1A_2",side:"up",g:"RS30330",t:101,e:287,w:"eris puts the gene 186 bp further from the IS than the reference does. A real distance error that also crosses the 150 bp line."},
+{n:"Far → near",is:"ISEc20",side:"down",g:"RS28710",t:164,e:92,w:"Off by 72 bp. The truth is just past 150 bp, so the band flips."},
+{n:"Touching",is:"IS100kyp",side:"down",g:"RS29265",t:0,e:0,ov:1,w:"Both say 0 bp. The truth counts 0 as near; eris labels it OVERLAPPING. Error 0, yet the bands disagree: a definition clash, not a placement error. 9 rows like this."},
+{n:"Hidden overlap",is:"ISEc23_2",side:"up",g:"RS11730",t:-65,e:0,w:"The CDS runs 65 bp into the IS in the reference. eris says 0 bp and doesn't flag an overlap. The error shows 0 because max(0, −65) = 0, so the formula hides the overlap. 7 rows like this."},
+{n:"Overlap → far",is:"IS682",side:"down",g:"tnpC",t:-2,e:604,w:"The reference overlaps by 2 bp; eris reports 604 bp. Same gene, but eris probably measured from a different IS end. The largest error in the run."},
+{n:"FN · no pair",is:"ISEc12_1",side:"down",g:"RS07600",t:57,e:null,w:"FN not_found: eris never reports this gene next to ISEc12, so there's no eris distance to compare."},
+{n:"FP · no pair",is:"ISEc8",side:"down",g:"gene Y",t:null,e:76,w:"FP not_in_truth: eris reports gene Y 76 bp away, but the truth has no relation for gene Y there, so there's no truth distance to compare."}];
+const s=0.28,L=300,R=380;
+function pairGene(side,d,y,cls,label){
+  if(d===null){const x=side==="up"?190:420;return `<rect class="g-miss" stroke-width="1" x="${x}" y="${y-10}" width="64" height="20" rx="4"/><text class="lbl" x="${x+32}" y="${y+28}" text-anchor="middle">none</text>`;}
+  const x=side==="up"?L-d*s-60:R+d*s,ie=side==="up"?L:R,ge=side==="up"?x+60:x;
+  let o=`<rect class="${cls}" stroke-width="1" x="${x}" y="${y-10}" width="60" height="20" rx="4" fill-opacity=".9"/><text class="lbl" x="${x+30}" y="${y+28}" text-anchor="middle">${label}</text>`;
+  if(d>0)o+=`<line class="rule" x1="${Math.min(ie,ge)}" y1="${y-17}" x2="${Math.max(ie,ge)}" y2="${y-17}"/><text class="lbl" x="${(ie+ge)/2}" y="${y-23}" text-anchor="middle">${d} bp</text>`;
+  return o;
+}
+const pairTrack=(lbl,is,y)=>`<text class="rowlbl" x="40" y="${y+4}">${lbl}</text><line class="trk" x1="100" y1="${y}" x2="640" y2="${y}"/><rect class="is-same" stroke-width="1" x="${L}" y="${y-12}" width="80" height="24" rx="4"/><text class="t-is" x="340" y="${y+4}" text-anchor="middle">${is}</text>`;
+pills($("pairPills"),PAIRS,x=>{
+  $("pairSvg").innerHTML=`<title id="pairTitle">${x.n}</title>`+pairTrack("Truth",x.is,62)+pairGene(x.side,x.t,62,"g-ok",x.g)+pairTrack("eris",x.is,142)+pairGene(x.side,x.e,142,"g-bad",x.g+(x.ov?" · OVERLAPPING":""));
+  $("pTd").textContent=x.t===null?"none":x.t+" bp";$("pEd").textContent=x.e===null?"none":x.e+" bp";
+  if(x.t===null||x.e===null){$("pBb").textContent="not scored";$("pBb").style.color="var(--faint)";$("pEr").textContent="not scored";}
+  else{const a=band(x.t,false),b=band(x.e,!!x.ov);$("pBb").textContent=a===b?a:a+" → "+b;$("pBb").style.color=a===b?"var(--ok)":"var(--bad)";$("pEr").textContent=Math.abs(x.e-Math.max(0,x.t))+" bp";}
+  $("pWhy").textContent=x.w;
+});
+</script>
+</body>
+</html>
