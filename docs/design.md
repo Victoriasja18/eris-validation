@@ -28,7 +28,7 @@ Per assembly, one row of `config/samples.tsv`:
 
 `config/config.yaml` holds everything that is not per assembly:
 
-- `eris`: git URL and commit to install (default `adimascf/eris` main). The commit is written into every metrics row.
+- `eris`: git URL and commit to install (default `Victoriasja18/eris` main). The commit is written into every metrics row.
 - `is_db`: ISfinder minimap2 index (`data/IS_n.mmi`). The workflow stops if it holds only a handful of sequences
   (the EC958 genome index `data/IS.mmi` was once used by mistake and made a GFA run hang).
 - eris settings: collapse mode, `min_coverage 0.30`, scored run `hops 3`, reach run `hops 20`.

@@ -6,8 +6,8 @@ outdir: ../progress/result/eris_validation
 
 # eris to install and validate. The commit is resolved to a full SHA and written into every metrics row.
 eris:
-  repo: https://github.com/adimascf/eris.git
-  commit: e4c6dbd704a9ce60fd79653154c10008d445c305
+  repo: https://github.com/Victoriasja18/eris.git
+  commit: 7b9a6dce96fde25b17950312c9bd05ede2ad2b99
 
 # ISfinder minimap2 index given to eris (-d). Checked first: a genome index here makes GFA runs hang.
 is_db: ../data/IS_n.mmi

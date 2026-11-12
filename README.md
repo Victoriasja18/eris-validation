@@ -1,6 +1,6 @@
 # eris-validation
 
-Validates how well [eris](https://github.com/adimascf/eris) reports, for each insertion sequence (IS), which CDS lies
+Validates how well [eris](https://github.com/Victoriasja18/eris) reports, for each insertion sequence (IS), which CDS lies
 **upstream** and **downstream** and **how far** away. For every assembly it gives precision, recall and F1 for side
 and distance, confusion matrices, and a row-level table of every wrong prediction. Effects (disrupted, truncated) are
 not scored for now; they are only carried into `relations.tsv`.
