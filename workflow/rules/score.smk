@@ -2,6 +2,7 @@ def run(hops):
     return {
         "report": f"{OUT}/{{genome}}/{{assembly_type}}/eris/h{hops}_report.tsv",
         "cds": f"{OUT}/{{genome}}/{{assembly_type}}/eris/h{hops}_cds.fna",
+        "assembly_gff": f"{OUT}/{{genome}}/{{assembly_type}}/eris/h{hops}_assembly.gff",
     }
 
 
@@ -14,6 +15,8 @@ rule score:
         cds=SCORED["cds"],
         reach_report=REACH["report"],
         reach_cds=REACH["cds"],
+        assembly=lambda wc: sample(wc).assembly,
+        assembly_gff=SCORED["assembly_gff"],
         reference=lambda wc: sample(wc).reference,
         truth=lambda wc: sample(wc).truth,
         groups=rules.clone_eris.output.groups,
@@ -29,6 +32,7 @@ rule score:
         OUT + "/{genome}/{assembly_type}/score.log",
     shell:
         "erisval score --report {input.report} --cds {input.cds}"
+        " --assembly {input.assembly} --assembly-gff {input.assembly_gff}"
         " --reach-report {input.reach_report} --reach-cds {input.reach_cds}"
         " --reference {input.reference} --truth {input.truth} --groups {input.groups} {params.replicons}"
         " {params.thresholds} -o {params.outdir}"

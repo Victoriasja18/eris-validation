@@ -1,6 +1,7 @@
 """
-Reads the eris outputs the validation needs: the flanks in `_report.tsv`, and the coding sequences in `_cds.fna`
-(every gene pyfgs called on the assembly, reported or not).
+Reads the eris outputs the validation needs: the flanks in `_report.tsv`, the coding sequences of the reported genes
+in `_cds.fna`, and every gene pyfgs called on the assembly. Older eris versions wrote every called gene to `_cds.fna`;
+newer ones keep only the reported genes there, and every called gene is cut from the assembly by `_assembly.gff`.
 Only the files are read, never eris itself, so any eris version's output can be scored.
 """
 import csv
@@ -9,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from Bio import SeqIO
+from Bio.Seq import reverse_complement
 
 from eris_validation.isoforms import group_of
 
@@ -66,6 +68,41 @@ def read_flanks(path: Path, groups: dict[str, str]) -> list[Flank]:
 def read_all_cds(path: Path) -> list[str]:
     """The coding sequence of every gene pyfgs called on the assembly."""
     return [str(record.seq) for record in SeqIO.parse(path, 'fasta')]
+
+
+def read_called_genes(gff: Path, assembly: Path) -> list[str]:
+    """
+    The coding sequence of every gene pyfgs called on the assembly: each CDS in eris's `_assembly.gff` (1-based,
+    inclusive), cut from the assembly (FASTA or GFA) and read on its own strand.
+    """
+    contigs = _read_assembly(assembly)
+    sequences = []
+    with open(gff) as handle:
+        for line in handle:
+            fields = line.rstrip('\n').split('\t')
+            if line.startswith('#') or len(fields) < 9 or fields[2] != 'CDS':
+                continue
+            contig, start, end, strand = fields[0], int(fields[3]), int(fields[4]), fields[6]
+            if contig not in contigs:
+                raise ErisOutputError(f"called gene on contig {contig} in {gff} is not in {assembly}")
+            seq = contigs[contig][start - 1:end]
+            sequences.append(reverse_complement(seq) if strand == '-' else seq)
+    return sequences
+
+
+def _read_assembly(path: Path) -> dict[str, str]:
+    """{contig: sequence} from a GFA (its S lines) or a FASTA."""
+    with open(path) as handle:
+        first = next((line for line in handle if line.strip()), '')
+    if first.startswith('>'):
+        return {record.id: str(record.seq) for record in SeqIO.parse(path, 'fasta')}
+    contigs = {}
+    with open(path) as handle:
+        for line in handle:
+            if line.startswith('S\t'):
+                fields = line.rstrip('\n').split('\t')
+                contigs[fields[1]] = fields[2]
+    return contigs
 
 
 def read_cds(path: Path, gene_ids) -> dict[str, str]:

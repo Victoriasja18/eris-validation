@@ -62,8 +62,8 @@ relation key (e.g. two copies of one IS with the same flank) are kept as one, th
 
 1. **Install eris** at the pinned commit (conda env).
 2. **Check truth**: schema and replicons as above; limit to `replicons` if given.
-3. **Run eris** twice per assembly (hops 3 scored, hops 20 reach), producing `_report.tsv` and `_cds.fna`.
-4. **Score** (`erisval score`): reads `_report.tsv`, `_cds.fna`, the reference and the truth. Does not import eris.
+3. **Run eris** twice per assembly (hops 3 scored, hops 20 reach), producing `_report.tsv`, `_cds.fna` and `_assembly.gff`.
+4. **Score** (`erisval score`): reads `_report.tsv`, `_cds.fna`, `_assembly.gff`, the assembly, the reference and the truth. Does not import eris.
    - Join report genes to `_cds.fna`: by `gene_id` (`<contig>_<start>_<end>`, 0-based) when records carry it, else by
      the coordinates in older pyfgs-style records (`<contig>_FGS_<n>`, 1-based). A reported gene missing from the FASTA
      stops the run.
@@ -103,7 +103,8 @@ relation key (e.g. two copies of one IS with the same flank) are kept as one, th
 - (Formerly: only disrupted was scored. eris `DISRUPTED` or `TRUNCATED` counted as disrupted. Upregulated was shown in the
   matrix, not scored.)
 - **Miss cause:** a miss found by the hops-20 run is `budget`; otherwise `not_reported` when a gene pyfgs called
-  (any record in `_cds.fna`) places on the truth CDS, else `not_called`.
+  (any CDS in `_assembly.gff`, cut from the assembly) places on the truth CDS, else `not_called`. `_cds.fna`
+  holds only the reported genes since eris `0aac337`, so it can't stand in for the called genes.
 - **Reports only:** no pass/fail. eris's own EC958 ratchet stays the only gate.
 
 ## Outputs

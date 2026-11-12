@@ -43,7 +43,8 @@ uv run erisval score --report run_report.tsv --cds run_cds.fna --reference ref.f
     --groups isoform_groups.tsv -o results/my_run
 ```
 
-`--groups` is eris's `tests/isoform_groups.tsv`. Add `--reach-report`/`--reach-cds` for miss causes.
+`--groups` is eris's `tests/isoform_groups.tsv`. Add `--reach-report`/`--reach-cds` for miss causes, and
+`--assembly`/`--assembly-gff` (the assembly and eris's `_assembly.gff`) so `not_called` is told from `not_reported`.
 
 ## Adding a genome
 
@@ -78,7 +79,8 @@ distance they are the same relations.
 
 Every FN gets a miss cause, checked in order: `budget` (the `reach_hops` run reports it), `not_reported` (pyfgs called
 a gene that is the truth CDS, but eris does not report it as a flank of that IS on that side), `not_called` (no gene
-in `_cds.fna`, which holds every gene pyfgs called, is the truth CDS).
+pyfgs called is the truth CDS). Every called gene is cut from the assembly by eris's `_assembly.gff`; without
+`--assembly-gff` the genes in `_cds.fna` are used, which only holds every called gene for older eris versions.
 This workflow only reports; it never fails on low scores.
 
 ## Tests

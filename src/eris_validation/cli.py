@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from eris_validation.eris_output import ErisOutputError, read_all_cds, read_cds, read_flanks
+from eris_validation.eris_output import ErisOutputError, read_all_cds, read_called_genes, read_cds, read_flanks
 from eris_validation.isoforms import read_groups
 from eris_validation.place import GenePlacer
 from eris_validation.score import Thresholds, score
@@ -30,6 +30,11 @@ def main(argv=None):
     s = commands.add_parser('score', help='score one eris run against the truth')
     s.add_argument('--report', type=Path, required=True, help='eris _report.tsv')
     s.add_argument('--cds', type=Path, required=True, help="eris _cds.fna of the same run")
+    s.add_argument('--assembly', type=Path, help='the assembly eris ran on (FASTA or GFA), with --assembly-gff')
+    s.add_argument('--assembly-gff', type=Path,
+                   help="eris _assembly.gff: every gene pyfgs called, to tell not_called from not_reported. Without "
+                        "it, every gene in --cds is taken as called, which holds only for eris versions whose "
+                        "_cds.fna is not limited to the reported genes")
     s.add_argument('--reach-report', type=Path, help='_report.tsv of a larger --hops run, to tell budget misses')
     s.add_argument('--reach-cds', type=Path, help='_cds.fna of that run')
     s.add_argument('--reference', type=Path, required=True, help='reference genome FASTA')
@@ -65,6 +70,8 @@ def main(argv=None):
 def run_score(args):
     if (args.reach_report is None) != (args.reach_cds is None):
         sys.exit("erisval: --reach-report and --reach-cds go together")
+    if (args.assembly is None) != (args.assembly_gff is None):
+        sys.exit("erisval: --assembly and --assembly-gff go together")
     labels = dict(label.split('=', 1) for label in args.label)
     groups = read_groups(args.groups)
     placer = GenePlacer(args.reference)
@@ -83,7 +90,10 @@ def run_score(args):
         return placer.place(sequences[gene_id])
 
     th = Thresholds(**{name: getattr(args, name) for name in vars(Thresholds())})
-    called = [p for seq in read_all_cds(args.cds) for p in placer.place(seq)]  # to tell not_called from not_reported
+    # Every called gene, to tell not_called from not_reported
+    called_genes = (read_called_genes(args.assembly_gff, args.assembly) if args.assembly_gff
+                    else read_all_cds(args.cds))
+    called = [p for seq in called_genes for p in placer.place(seq)]
     result = score(truths, flanks, place, reach_flanks, th, called)
     write_tables(result, args.outdir, labels)
     print(summary(metrics(result), details(result)), file=sys.stderr)

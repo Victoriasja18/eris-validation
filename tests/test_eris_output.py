@@ -1,6 +1,6 @@
 import pytest
 
-from eris_validation.eris_output import ErisOutputError, read_all_cds, read_cds, read_flanks
+from eris_validation.eris_output import ErisOutputError, read_all_cds, read_called_genes, read_cds, read_flanks
 
 REPORT = (
     "locus_id\ttarget\ttarget_identity\tcontig_path\tgene_id\tcontext\tdist_bp\ttopo_hops\torientation\teffect\n"
@@ -24,6 +24,29 @@ def test_all_called_genes_are_read_whatever_their_names(tmp_path):
     path = tmp_path / "cds.fna"
     path.write_text(">chr_FGS_1 chr:11-90 strand=+\nATGAAA\n>chr_FGS_2 chr:101-200 strand=-\nATGCCC\nTAA\n")
     assert read_all_cds(path) == ["ATGAAA", "ATGCCCTAA"]
+
+
+GFF = ("##gff-version 3\n"
+       "ctgA\tpyfgs_v0.0.3\tCDS\t3\t8\t1.3\t+\t0\tID=ctgA_FGS_1\n"
+       "ctgB\tpyfgs_v0.0.3\tCDS\t2\t7\t1.1\t-\t0\tID=ctgB_FGS_1\n")
+
+
+@pytest.mark.parametrize("assembly", [
+    ">ctgA\nCCATGAAAGG\n>ctgB length=10\nGTTACATTTT\n",  # FASTA
+    "H\tVN:Z:1.0\nS\tctgA\tCCATGAAAGG\tdp:i:30\nS\tctgB\tGTTACATTTT\nL\tctgA\t+\tctgB\t+\t0M\n",  # GFA
+])
+def test_called_genes_are_cut_from_the_assembly_by_the_assembly_gff(tmp_path, assembly):
+    (tmp_path / "a.gff").write_text(GFF)
+    (tmp_path / "asm").write_text(assembly)
+    # GFF coordinates are 1-based and inclusive; a '-' gene is read on the reverse strand
+    assert read_called_genes(tmp_path / "a.gff", tmp_path / "asm") == ["ATGAAA", "ATGTAA"]
+
+
+def test_a_called_gene_on_a_contig_missing_from_the_assembly_stops(tmp_path):
+    (tmp_path / "a.gff").write_text(GFF)
+    (tmp_path / "asm.fa").write_text(">ctgA\nCCATGAAAGG\n")
+    with pytest.raises(ErisOutputError, match="ctgB"):
+        read_called_genes(tmp_path / "a.gff", tmp_path / "asm.fa")
 
 
 @pytest.mark.parametrize("fasta", [

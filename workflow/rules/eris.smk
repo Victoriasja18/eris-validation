@@ -44,6 +44,7 @@ rule run_eris:
     output:
         report=OUT + "/{genome}/{assembly_type}/eris/h{hops}_report.tsv",
         cds=OUT + "/{genome}/{assembly_type}/eris/h{hops}_cds.fna",
+        assembly_gff=OUT + "/{genome}/{assembly_type}/eris/h{hops}_assembly.gff",
     params:
         prefix=OUT + "/{genome}/{assembly_type}/eris/h{hops}",
         is_db=config["is_db"],

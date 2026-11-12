@@ -44,7 +44,7 @@ PLACES = {"g1": [Placement("chr", 102, 400, "+", 0.995)], "g2": [Placement("chr"
           "g8": [Placement("chr", 7000, 7600, "+", 1.0)]}
 
 
-# Every gene pyfgs called on the assembly (all of _cds.fna), placed on the reference
+# Every gene pyfgs called on the assembly (every CDS in _assembly.gff), placed on the reference
 CALLED = [p for gene in ("g1", "g2", "g3", "g6", "g7", "g8") for p in PLACES[gene]]
 
 
